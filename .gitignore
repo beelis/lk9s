@@ -8,3 +8,7 @@
 # Go build cache
 *.test
 *.out
+
+# Claude
+.claude/
+CLAUDE.md
