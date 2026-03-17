@@ -1,0 +1,10 @@
+# Binary
+/lk9s
+*.exe
+
+# IDE
+.idea/
+
+# Go build cache
+*.test
+*.out

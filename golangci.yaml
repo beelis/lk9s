@@ -1,0 +1,134 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - asasalint
+    #    - bodyclose
+    - canonicalheader
+    - containedctx
+    #    - contextcheck
+    - cyclop
+    - depguard
+    - durationcheck
+    - embeddedstructfieldcheck
+    - err113
+    - errcheck
+    - errchkjson
+    #    - errname
+    #    - errorlint
+    - exhaustive
+    - exhaustruct
+    - exptostd
+    - fatcontext
+    - forbidigo
+    #    - forcetypeassert
+    #    - ginkgolinter
+    - gochecknoglobals
+    #    - gochecksumtype
+    #    - gocritic
+    - godox
+    #    - gosec
+    - gosmopolitan
+    #    - govet
+    - iface
+    - importas
+    - interfacebloat
+    #    - intrange
+    - ireturn
+    - loggercheck
+    - maintidx
+    #    - makezero
+    #    - mirror
+    - mnd
+    - musttag
+    #    - nilerr
+    #    - nilnesserr
+    #    - nilnil
+    #    - noctx
+    - noinlineerr
+    #    - nonamedreturns
+    #    - paralleltest
+    - perfsprint
+    - prealloc
+    #    - protogetter
+    #    - reassign
+    - recvcheck
+    - revive
+    #    - rowserrcheck
+    - sloglint
+    #    - spancheck
+    - sqlclosecheck
+    #    - staticcheck
+    #    - tagliatelle
+    #    - testifylint
+    #    - thelper
+    - tparallel
+    #    - unconvert
+    #    - unparam
+    #    - unused
+    #    - usetesting
+    - varnamelen
+    #    - wastedassign
+    - wrapcheck # discuss if we should reenable this
+    - wsl
+  #    - zerologlint
+  settings:
+    funlen:
+      lines: 80
+      ignore-comments: true
+    gocritic:
+      disabled-checks:
+        - singleCaseSwitch
+        - commentFormatting
+    godot:
+      scope: toplevel
+      exclude:
+        - '^fixme:'
+        - '^todo:'
+        - ^ -
+    nlreturn:
+      block-size: 2
+    tagalign:
+      sort: false
+    tagliatelle:
+      case:
+        rules:
+          json: camel
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+      disable:
+        - decl
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - docs
+      - mocks
+    rules:
+      # Exclude some linters from running on tests files.
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - dupl
+          - gosec
+          - funlen
+          - unparam
+issues:
+  fix: false
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - docs
+severity:
+  default: info
+
