@@ -26,6 +26,7 @@ func SelectContext(contexts []config.Context) (config.Context, error) {
 	table.SetSelectedFunc(func(row, _ int) {
 		if row > 0 {
 			selected = contexts[row-1]
+
 			app.Stop()
 		}
 	})

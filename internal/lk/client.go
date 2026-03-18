@@ -15,6 +15,14 @@ type Room struct {
 	CreationTime    int64
 }
 
+type Participant struct {
+	Identity string
+	Name     string
+	State    string
+	Tracks   int
+	JoinedAt int64
+}
+
 type Client struct {
 	rooms *lksdk.RoomServiceClient
 }
@@ -42,4 +50,24 @@ func (c *Client) ListRooms(ctx context.Context) ([]Room, error) {
 	}
 
 	return rooms, nil
+}
+
+func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participant, error) {
+	res, err := c.rooms.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room})
+	if err != nil {
+		return nil, fmt.Errorf("list participants: %w", err)
+	}
+
+	pp := make([]Participant, len(res.GetParticipants()))
+	for i, p := range res.GetParticipants() {
+		pp[i] = Participant{
+			Identity: p.GetIdentity(),
+			Name:     p.GetName(),
+			State:    p.GetState().String(),
+			Tracks:   len(p.GetTracks()),
+			JoinedAt: p.GetJoinedAt(),
+		}
+	}
+
+	return pp, nil
 }

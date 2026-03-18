@@ -14,14 +14,74 @@ import (
 
 const refreshInterval = 5 * time.Second
 
-type column struct {
+type column[T any] struct {
 	header  string
 	key     rune
-	display func(r lk.Room) string
-	compare func(a, b lk.Room) int
+	display func(T) string
+	compare func(T, T) int
 }
 
-var columns = []column{
+type tableState[T any] struct {
+	cols    []column[T]
+	items   []T
+	sortCol int
+	sortAsc bool
+}
+
+func (s *tableState[T]) render(table *tview.Table) {
+	table.Clear()
+
+	for col, c := range s.cols {
+		label := c.header
+
+		if col == s.sortCol {
+			if s.sortAsc {
+				label += " ▲"
+			} else {
+				label += " ▼"
+			}
+		}
+
+		table.SetCell(0, col, tview.NewTableCell(label).SetSelectable(false).SetExpansion(1))
+	}
+
+	sorted := slices.Clone(s.items)
+	slices.SortFunc(sorted, func(a, b T) int {
+		n := s.cols[s.sortCol].compare(a, b)
+		if !s.sortAsc {
+			return -n
+		}
+
+		return n
+	})
+
+	for row, item := range sorted {
+		for col, c := range s.cols {
+			table.SetCell(row+1, col, tview.NewTableCell(c.display(item)).SetExpansion(1))
+		}
+	}
+}
+
+func (s *tableState[T]) handleKey(r rune) bool {
+	for i, c := range s.cols {
+		if c.key != r {
+			continue
+		}
+
+		if i == s.sortCol {
+			s.sortAsc = !s.sortAsc
+		} else {
+			s.sortCol = i
+			s.sortAsc = true
+		}
+
+		return true
+	}
+
+	return false
+}
+
+var roomCols = []column[lk.Room]{
 	{
 		header:  "NAME",
 		key:     'N',
@@ -48,39 +108,147 @@ var columns = []column{
 	},
 }
 
+var participantCols = []column[lk.Participant]{
+	{
+		header:  "IDENTITY",
+		key:     'I',
+		display: func(p lk.Participant) string { return p.Identity },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Identity, b.Identity) },
+	},
+	{
+		header:  "NAME",
+		key:     'N',
+		display: func(p lk.Participant) string { return p.Name },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Name, b.Name) },
+	},
+	{
+		header:  "STATE",
+		key:     'S',
+		display: func(p lk.Participant) string { return p.State },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.State, b.State) },
+	},
+	{
+		header:  "TRACKS",
+		key:     'T',
+		display: func(p lk.Participant) string { return fmt.Sprintf("%d", p.Tracks) },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Tracks, b.Tracks) },
+	},
+	{
+		header:  "JOINED",
+		key:     'J',
+		display: func(p lk.Participant) string { return time.Unix(p.JoinedAt, 0).Format(time.DateTime) },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.JoinedAt, b.JoinedAt) },
+	},
+}
+
 type roomLister interface {
 	ListRooms(ctx context.Context) ([]lk.Room, error)
+	ListParticipants(ctx context.Context, room string) ([]lk.Participant, error)
+}
+
+type nav struct {
+	app         *tview.Application
+	pages       *tview.Pages
+	client      roomLister
+	contextName string
 }
 
 func Run(client roomLister, contextName string) error {
-	app := tview.NewApplication()
-	table := newTable()
-	header := tview.NewTextView().SetText(" ctx: " + contextName)
-
-	sortCol := 0
-	sortAsc := true
-
 	rooms, err := client.ListRooms(context.Background())
 	if err != nil {
 		return fmt.Errorf("fetch rooms: %w", err)
 	}
 
-	populateTable(table, rooms, sortCol, sortAsc)
+	app := tview.NewApplication()
+	pages := tview.NewPages()
+	n := nav{app: app, pages: pages, client: client, contextName: contextName}
+
+	pages.AddPage("rooms", roomsPage(n, rooms), true, true)
+
+	return app.SetRoot(pages, true).Run()
+}
+
+func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
+	header := tview.NewTextView().SetText(" ctx: " + n.contextName)
+	table := newTable(" Rooms ")
+	state := &tableState[lk.Room]{cols: roomCols, items: rooms, sortAsc: true}
+
+	state.render(table)
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		col := sortKeyCol(event.Rune())
-		if col < 0 {
+		if !state.handleKey(event.Rune()) {
 			return event
 		}
 
-		if col == sortCol {
-			sortAsc = !sortAsc
-		} else {
-			sortCol = col
-			sortAsc = true
+		state.render(table)
+
+		return nil
+	})
+
+	table.SetSelectedFunc(func(row, _ int) {
+		if row == 0 || row > len(state.items) {
+			return
 		}
 
-		populateTable(table, rooms, sortCol, sortAsc)
+		roomName := state.items[row-1].Name
+
+		go func() {
+			pp, err := n.client.ListParticipants(context.Background(), roomName)
+			if err != nil {
+				return
+			}
+
+			n.app.QueueUpdateDraw(func() {
+				n.pages.RemovePage("participants")
+				n.pages.AddPage("participants", participantsPage(n, roomName, pp), true, true)
+			})
+		}()
+	})
+
+	go func() {
+		ticker := time.NewTicker(refreshInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			fetched, err := n.client.ListRooms(context.Background())
+			if err != nil {
+				return
+			}
+
+			n.app.QueueUpdateDraw(func() {
+				state.items = fetched
+				state.render(table)
+			})
+		}
+	}()
+
+	return tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(header, 1, 0, false).
+		AddItem(table, 0, 1, true)
+}
+
+func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Primitive {
+	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName)
+	table := newTable(" Participants ")
+	state := &tableState[lk.Participant]{cols: participantCols, items: initial, sortAsc: true}
+
+	state.render(table)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancel()
+			n.pages.SwitchToPage("rooms")
+
+			return nil
+		}
+
+		if !state.handleKey(event.Rune()) {
+			return event
+		}
+
+		state.render(table)
 
 		return nil
 	})
@@ -89,77 +257,32 @@ func Run(client roomLister, contextName string) error {
 		ticker := time.NewTicker(refreshInterval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			fetched, err := client.ListRooms(context.Background())
-			if err != nil {
+		for {
+			select {
+			case <-ctx.Done():
 				return
-			}
+			case <-ticker.C:
+				fetched, err := n.client.ListParticipants(ctx, roomName)
+				if err != nil {
+					return
+				}
 
-			app.QueueUpdateDraw(func() {
-				rooms = fetched
-				populateTable(table, rooms, sortCol, sortAsc)
-			})
+				n.app.QueueUpdateDraw(func() {
+					state.items = fetched
+					state.render(table)
+				})
+			}
 		}
 	}()
 
-	layout := tview.NewFlex().SetDirection(tview.FlexRow).
+	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true)
-
-	return app.SetRoot(layout, true).Run()
 }
 
-func sortKeyCol(r rune) int {
-	for i, c := range columns {
-		if c.key == r {
-			return i
-		}
-	}
-
-	return -1
-}
-
-func newTable() *tview.Table {
+func newTable(title string) *tview.Table {
 	table := tview.NewTable().SetBorders(false).SetSelectable(true, false)
-	table.SetTitle(" Rooms ").SetBorder(true)
+	table.SetTitle(title).SetBorder(true)
 
 	return table
-}
-
-func populateTable(table *tview.Table, rooms []lk.Room, sortCol int, sortAsc bool) {
-	table.Clear()
-
-	for col, c := range columns {
-		label := c.header
-
-		if col == sortCol {
-			if sortAsc {
-				label += " ▲"
-			} else {
-				label += " ▼"
-			}
-		}
-
-		table.SetCell(0, col, tview.NewTableCell(label).SetSelectable(false).SetExpansion(1))
-	}
-
-	for row, r := range sortedRooms(rooms, sortCol, sortAsc) {
-		for col, c := range columns {
-			table.SetCell(row+1, col, tview.NewTableCell(c.display(r)).SetExpansion(1))
-		}
-	}
-}
-
-func sortedRooms(rooms []lk.Room, col int, asc bool) []lk.Room {
-	sorted := slices.Clone(rooms)
-	slices.SortFunc(sorted, func(a, b lk.Room) int {
-		n := columns[col].compare(a, b)
-		if !asc {
-			return -n
-		}
-
-		return n
-	})
-
-	return sorted
 }
