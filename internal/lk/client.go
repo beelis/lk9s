@@ -31,14 +31,15 @@ func (c *Client) ListRooms(ctx context.Context) ([]Room, error) {
 		return nil, fmt.Errorf("list rooms: %w", err)
 	}
 
-	rooms := make([]Room, len(res.Rooms))
-	for i, r := range res.Rooms {
+	rooms := make([]Room, len(res.GetRooms()))
+	for i, r := range res.GetRooms() {
 		rooms[i] = Room{
-			Name:            r.Name,
-			SID:             r.Sid,
-			NumParticipants: r.NumParticipants,
-			CreationTime:    r.CreationTime,
+			Name:            r.GetName(),
+			SID:             r.GetSid(),
+			NumParticipants: r.GetNumParticipants(),
+			CreationTime:    r.GetCreationTime(),
 		}
 	}
+
 	return rooms, nil
 }

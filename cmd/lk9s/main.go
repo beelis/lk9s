@@ -13,6 +13,7 @@ func main() {
 	url := flag.String("url", "", "LiveKit server URL")
 	apiKey := flag.String("api-key", "", "LiveKit API key")
 	apiSecret := flag.String("api-secret", "", "LiveKit API secret")
+
 	flag.Parse()
 
 	if *url == "" || *apiKey == "" || *apiSecret == "" {

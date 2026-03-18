@@ -13,6 +13,7 @@ func main() {
 	apiSecret := flag.String("api-secret", "", "LiveKit API secret")
 	room := flag.String("room", "", "Room name")
 	identity := flag.String("identity", "", "Participant identity")
+
 	flag.Parse()
 
 	if *apiKey == "" || *apiSecret == "" || *room == "" || *identity == "" {
@@ -41,5 +42,6 @@ func generateToken(apiKey, apiSecret, room, identity string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("generate token: %w", err)
 	}
+
 	return token, nil
 }
