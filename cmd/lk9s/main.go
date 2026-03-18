@@ -5,24 +5,48 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/beelis/lk9s/internal/config"
 	"github.com/beelis/lk9s/internal/lk"
 	"github.com/beelis/lk9s/internal/ui"
 )
 
 func main() {
-	url := flag.String("url", "", "LiveKit server URL")
-	apiKey := flag.String("api-key", "", "LiveKit API key")
-	apiSecret := flag.String("api-secret", "", "LiveKit API secret")
+	contextName := flag.String("context", "", "context name to use (default: interactive selection)")
 
 	flag.Parse()
 
-	if *url == "" || *apiKey == "" || *apiSecret == "" {
-		fmt.Fprintln(os.Stderr, "usage: lk9s -url <url> -api-key <key> -api-secret <secret>")
-		os.Exit(1)
-	}
-
-	if err := ui.Run(lk.NewClient(*url, *apiKey, *apiSecret)); err != nil {
+	cfg, err := config.Load()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+
+	ctx, err := resolveContext(cfg, *contextName)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	if err := ui.Run(lk.NewClient(ctx.URL, ctx.APIKey, ctx.APISecret)); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func resolveContext(cfg *config.Config, name string) (config.Context, error) {
+	if name != "" {
+		for _, ctx := range cfg.Contexts {
+			if ctx.Name == name {
+				return ctx, nil
+			}
+		}
+
+		return config.Context{}, fmt.Errorf("context %q not found", name)
+	}
+
+	if len(cfg.Contexts) == 1 {
+		return cfg.Contexts[0], nil
+	}
+
+	return ui.SelectContext(cfg.Contexts)
 }
