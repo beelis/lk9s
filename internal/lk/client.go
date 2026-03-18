@@ -3,6 +3,7 @@ package lk
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/livekit/protocol/livekit"
 	lksdk "github.com/livekit/server-sdk-go/v2"
@@ -25,13 +26,23 @@ type Participant struct {
 	Metadata string
 }
 
+type Egress struct {
+	ID        string
+	Status    string
+	Type      string
+	StartedAt int64
+	Error     string
+}
+
 type Client struct {
-	rooms *lksdk.RoomServiceClient
+	rooms    *lksdk.RoomServiceClient
+	egresses *lksdk.EgressClient
 }
 
 func NewClient(url, apiKey, apiSecret string) *Client {
 	return &Client{
-		rooms: lksdk.NewRoomServiceClient(url, apiKey, apiSecret),
+		rooms:    lksdk.NewRoomServiceClient(url, apiKey, apiSecret),
+		egresses: lksdk.NewEgressClient(url, apiKey, apiSecret),
 	}
 }
 
@@ -74,4 +85,48 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 	}
 
 	return pp, nil
+}
+
+func (c *Client) ListEgresses(ctx context.Context, room string) ([]Egress, error) {
+	res, err := c.egresses.ListEgress(ctx, &livekit.ListEgressRequest{RoomName: room})
+	if err != nil {
+		return nil, fmt.Errorf("list egresses: %w", err)
+	}
+
+	eg := make([]Egress, len(res.GetItems()))
+
+	for i, e := range res.GetItems() {
+		eg[i] = Egress{
+			ID:        e.GetEgressId(),
+			Status:    egressStatus(e.GetStatus()),
+			Type:      egressType(e),
+			StartedAt: e.GetStartedAt(),
+			Error:     e.GetError(),
+		}
+	}
+
+	return eg, nil
+}
+
+func egressStatus(s livekit.EgressStatus) string {
+	name := s.String()
+
+	return strings.TrimPrefix(name, "EGRESS_")
+}
+
+func egressType(e *livekit.EgressInfo) string {
+	switch e.GetRequest().(type) {
+	case *livekit.EgressInfo_RoomComposite:
+		return "ROOM_COMPOSITE"
+	case *livekit.EgressInfo_Web:
+		return "WEB"
+	case *livekit.EgressInfo_Participant:
+		return "PARTICIPANT"
+	case *livekit.EgressInfo_TrackComposite:
+		return "TRACK_COMPOSITE"
+	case *livekit.EgressInfo_Track:
+		return "TRACK"
+	default:
+		return "UNKNOWN"
+	}
 }

@@ -142,9 +142,49 @@ var participantCols = []column[lk.Participant]{
 	},
 }
 
+var egressCols = []column[lk.Egress]{
+	{
+		header:  "ID",
+		key:     'I',
+		display: func(e lk.Egress) string { return e.ID },
+		compare: func(a, b lk.Egress) int { return cmp.Compare(a.ID, b.ID) },
+	},
+	{
+		header:  "STATUS",
+		key:     'S',
+		display: func(e lk.Egress) string { return e.Status },
+		compare: func(a, b lk.Egress) int { return cmp.Compare(a.Status, b.Status) },
+	},
+	{
+		header:  "TYPE",
+		key:     'T',
+		display: func(e lk.Egress) string { return e.Type },
+		compare: func(a, b lk.Egress) int { return cmp.Compare(a.Type, b.Type) },
+	},
+	{
+		header: "STARTED",
+		key:    'A',
+		display: func(e lk.Egress) string {
+			if e.StartedAt == 0 {
+				return "-"
+			}
+
+			return time.Unix(0, e.StartedAt).Format(time.DateTime)
+		},
+		compare: func(a, b lk.Egress) int { return cmp.Compare(a.StartedAt, b.StartedAt) },
+	},
+	{
+		header:  "ERROR",
+		key:     'E',
+		display: func(e lk.Egress) string { return e.Error },
+		compare: func(a, b lk.Egress) int { return cmp.Compare(a.Error, b.Error) },
+	},
+}
+
 type roomLister interface {
 	ListRooms(ctx context.Context) ([]lk.Room, error)
 	ListParticipants(ctx context.Context, room string) ([]lk.Participant, error)
+	ListEgresses(ctx context.Context, room string) ([]lk.Egress, error)
 }
 
 type nav struct {
@@ -169,16 +209,31 @@ func Run(client roomLister, contextName string) error {
 	return app.SetRoot(pages, true).Run()
 }
 
-func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
-	header := tview.NewTextView().SetText(" ctx: " + n.contextName)
-	table := newTable(" Rooms ")
-	state := &tableState[lk.Room]{cols: roomCols, items: rooms, sortAsc: true}
+func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room]) func(*tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := table.GetSelection()
 
-	state.render(table)
+		if event.Rune() == 'e' {
+			if row > 0 && row <= len(state.items) {
+				roomName := state.items[row-1].Name
 
-	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				go func() {
+					eg, err := n.client.ListEgresses(context.Background(), roomName)
+					if err != nil {
+						return
+					}
+
+					n.app.QueueUpdateDraw(func() {
+						n.pages.RemovePage("egresses")
+						n.pages.AddPage("egresses", egressesPage(n, roomName, eg), true, true)
+					})
+				}()
+			}
+
+			return nil
+		}
+
 		if event.Rune() == 'm' {
-			row, _ := table.GetSelection()
 			if row > 0 && row <= len(state.items) {
 				r := state.items[row-1]
 
@@ -196,7 +251,16 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 		state.render(table)
 
 		return nil
-	})
+	}
+}
+
+func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
+	header := tview.NewTextView().SetText(" ctx: " + n.contextName)
+	table := newTable(" Rooms ")
+	state := &tableState[lk.Room]{cols: roomCols, items: rooms, sortAsc: true}
+
+	state.render(table)
+	table.SetInputCapture(roomsInputCapture(n, table, state))
 
 	table.SetSelectedFunc(func(row, _ int) {
 		if row == 0 || row > len(state.items) {
@@ -235,9 +299,12 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 		}
 	}()
 
+	keys := [][2]string{{"Enter", "participants"}, {"e", "egresses"}, {"m", "metadata"}, {"Shift+letter", "sort"}}
+
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
-		AddItem(table, 0, 1, true)
+		AddItem(table, 0, 1, true).
+		AddItem(legend(keys), 1, 0, false)
 }
 
 func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Primitive {
@@ -300,9 +367,68 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		}
 	}()
 
+	keys := [][2]string{{"Esc", "back"}, {"m", "metadata"}, {"Shift+letter", "sort"}}
+
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
-		AddItem(table, 0, 1, true)
+		AddItem(table, 0, 1, true).
+		AddItem(legend(keys), 1, 0, false)
+}
+
+func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
+	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName + " > egresses")
+	table := newTable(" Egresses ")
+	state := &tableState[lk.Egress]{cols: egressCols, items: initial, sortAsc: true}
+
+	state.render(table)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			cancel()
+			n.pages.SwitchToPage("rooms")
+
+			return nil
+		}
+
+		if !state.handleKey(event.Rune()) {
+			return event
+		}
+
+		state.render(table)
+
+		return nil
+	})
+
+	go func() {
+		ticker := time.NewTicker(refreshInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				fetched, err := n.client.ListEgresses(ctx, roomName)
+				if err != nil {
+					return
+				}
+
+				n.app.QueueUpdateDraw(func() {
+					state.items = fetched
+					state.render(table)
+				})
+			}
+		}
+	}()
+
+	keys := [][2]string{{"Esc", "back"}, {"Shift+letter", "sort"}}
+
+	return tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(header, 1, 0, false).
+		AddItem(table, 0, 1, true).
+		AddItem(legend(keys), 1, 0, false)
 }
 
 func metadataPage(n nav, title, content string) tview.Primitive {
@@ -351,4 +477,18 @@ func newTable(title string) *tview.Table {
 	table.SetTitle(title).SetBorder(true)
 
 	return table
+}
+
+func legend(entries [][2]string) *tview.TextView {
+	text := ""
+
+	for _, e := range entries {
+		if text != "" {
+			text += "  "
+		}
+
+		text += "<" + e[0] + "> " + e[1]
+	}
+
+	return tview.NewTextView().SetText(" " + text)
 }
