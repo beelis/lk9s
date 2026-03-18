@@ -3,6 +3,7 @@ package ui
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -176,6 +177,18 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 	state.render(table)
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 'm' {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.items) {
+				r := state.items[row-1]
+
+				n.pages.RemovePage("metadata")
+				n.pages.AddPage("metadata", metadataPage(n, r.Name, r.Metadata), true, true)
+			}
+
+			return nil
+		}
+
 		if !state.handleKey(event.Rune()) {
 			return event
 		}
@@ -244,6 +257,18 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 			return nil
 		}
 
+		if event.Rune() == 'm' {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.items) {
+				p := state.items[row-1]
+
+				n.pages.RemovePage("metadata")
+				n.pages.AddPage("metadata", metadataPage(n, p.Identity, p.Metadata), true, true)
+			}
+
+			return nil
+		}
+
 		if !state.handleKey(event.Rune()) {
 			return event
 		}
@@ -278,6 +303,47 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true)
+}
+
+func metadataPage(n nav, title, content string) tview.Primitive {
+	body := tview.NewTextView().SetText(prettyJSON(content))
+	body.SetBorder(true).SetTitle(" metadata: " + title + " ")
+
+	body.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			n.pages.RemovePage("metadata")
+
+			return nil
+		}
+
+		return event
+	})
+
+	return tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(body, 0, 3, true).
+			AddItem(nil, 0, 1, false), 0, 2, true).
+		AddItem(nil, 0, 1, false)
+}
+
+func prettyJSON(s string) string {
+	if s == "" {
+		return "(no metadata)"
+	}
+
+	var v any
+	if err := json.Unmarshal([]byte(s), &v); err != nil {
+		return s
+	}
+
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return s
+	}
+
+	return string(out)
 }
 
 func newTable(title string) *tview.Table {

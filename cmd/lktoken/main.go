@@ -36,7 +36,7 @@ func generateToken(apiKey, apiSecret, room, identity string) (string, error) {
 		RoomCreate: true,
 		RoomJoin:   true,
 		Room:       room,
-	}).SetIdentity(identity)
+	}).SetIdentity(identity).SetMetadata(`{"role":"tester","env":"dev"}`)
 
 	token, err := at.ToJWT()
 	if err != nil {

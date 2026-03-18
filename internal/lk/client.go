@@ -13,6 +13,7 @@ type Room struct {
 	SID             string
 	NumParticipants uint32
 	CreationTime    int64
+	Metadata        string
 }
 
 type Participant struct {
@@ -21,6 +22,7 @@ type Participant struct {
 	State    string
 	Tracks   int
 	JoinedAt int64
+	Metadata string
 }
 
 type Client struct {
@@ -46,6 +48,7 @@ func (c *Client) ListRooms(ctx context.Context) ([]Room, error) {
 			SID:             r.GetSid(),
 			NumParticipants: r.GetNumParticipants(),
 			CreationTime:    r.GetCreationTime(),
+			Metadata:        r.GetMetadata(),
 		}
 	}
 
@@ -66,6 +69,7 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 			State:    p.GetState().String(),
 			Tracks:   len(p.GetTracks()),
 			JoinedAt: p.GetJoinedAt(),
+			Metadata: p.GetMetadata(),
 		}
 	}
 
