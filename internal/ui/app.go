@@ -15,9 +15,11 @@ type roomLister interface {
 	ListRooms(ctx context.Context) ([]lk.Room, error)
 }
 
-func Run(client roomLister) error {
+func Run(client roomLister, contextName string) error {
 	app := tview.NewApplication()
 	table := newTable()
+
+	header := tview.NewTextView().SetText(" ctx: " + contextName)
 
 	rooms, err := client.ListRooms(context.Background())
 	if err != nil {
@@ -42,7 +44,11 @@ func Run(client roomLister) error {
 		}
 	}()
 
-	return app.SetRoot(table, true).Run()
+	layout := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(header, 1, 0, false).
+		AddItem(table, 0, 1, true)
+
+	return app.SetRoot(layout, true).Run()
 }
 
 func newTable() *tview.Table {

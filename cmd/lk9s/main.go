@@ -27,7 +27,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := ui.Run(lk.NewClient(ctx.URL, ctx.APIKey, ctx.APISecret)); err != nil {
+	if err := ui.Run(lk.NewClient(ctx.URL, ctx.APIKey, ctx.APISecret), ctx.Name); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
