@@ -3,6 +3,7 @@ module github.com/beelis/lk9s
 go 1.26
 
 require (
+	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/livekit/protocol v1.44.1-0.20260223055551-e05f7b7a6146
 	github.com/livekit/server-sdk-go/v2 v2.16.0
 	github.com/rivo/tview v0.42.0
@@ -24,7 +25,6 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gammazero/deque v1.2.1 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
-	github.com/gdamore/tcell/v2 v2.8.1 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
