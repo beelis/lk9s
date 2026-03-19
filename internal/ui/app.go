@@ -25,6 +25,7 @@ type column[T any] struct {
 type tableState[T any] struct {
 	cols    []column[T]
 	items   []T
+	sorted  []T
 	sortCol int
 	sortAsc bool
 }
@@ -46,8 +47,8 @@ func (s *tableState[T]) render(table *tview.Table) {
 		table.SetCell(0, col, tview.NewTableCell(label).SetSelectable(false).SetExpansion(1))
 	}
 
-	sorted := slices.Clone(s.items)
-	slices.SortFunc(sorted, func(a, b T) int {
+	s.sorted = slices.Clone(s.items)
+	slices.SortFunc(s.sorted, func(a, b T) int {
 		n := s.cols[s.sortCol].compare(a, b)
 		if !s.sortAsc {
 			return -n
@@ -56,7 +57,7 @@ func (s *tableState[T]) render(table *tview.Table) {
 		return n
 	})
 
-	for row, item := range sorted {
+	for row, item := range s.sorted {
 		for col, c := range s.cols {
 			table.SetCell(row+1, col, tview.NewTableCell(c.display(item)).SetExpansion(1))
 		}
@@ -214,8 +215,8 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room]) fu
 		row, _ := table.GetSelection()
 
 		if event.Rune() == 'e' {
-			if row > 0 && row <= len(state.items) {
-				roomName := state.items[row-1].Name
+			if row > 0 && row <= len(state.sorted) {
+				roomName := state.sorted[row-1].Name
 
 				go func() {
 					eg, err := n.client.ListEgresses(context.Background(), roomName)
@@ -234,8 +235,8 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room]) fu
 		}
 
 		if event.Rune() == 'm' {
-			if row > 0 && row <= len(state.items) {
-				r := state.items[row-1]
+			if row > 0 && row <= len(state.sorted) {
+				r := state.sorted[row-1]
 
 				n.pages.RemovePage("metadata")
 				n.pages.AddPage("metadata", metadataPage(n, r.Name, r.Metadata), true, true)
@@ -263,11 +264,11 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 	table.SetInputCapture(roomsInputCapture(n, table, state))
 
 	table.SetSelectedFunc(func(row, _ int) {
-		if row == 0 || row > len(state.items) {
+		if row == 0 || row > len(state.sorted) {
 			return
 		}
 
-		roomName := state.items[row-1].Name
+		roomName := state.sorted[row-1].Name
 
 		go func() {
 			pp, err := n.client.ListParticipants(context.Background(), roomName)
@@ -326,8 +327,8 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 
 		if event.Rune() == 'm' {
 			row, _ := table.GetSelection()
-			if row > 0 && row <= len(state.items) {
-				p := state.items[row-1]
+			if row > 0 && row <= len(state.sorted) {
+				p := state.sorted[row-1]
 
 				n.pages.RemovePage("metadata")
 				n.pages.AddPage("metadata", metadataPage(n, p.Identity, p.Metadata), true, true)
