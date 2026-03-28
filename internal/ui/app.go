@@ -224,16 +224,11 @@ func Run(client roomLister, contextName string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rooms, err := client.ListRooms(ctx)
-	if err != nil {
-		return fmt.Errorf("fetch rooms: %w", err)
-	}
-
 	app := tview.NewApplication()
 	pages := tview.NewPages()
 	n := nav{app: app, pages: pages, client: client, contextName: contextName, ctx: ctx}
 
-	pages.AddPage("rooms", roomsPage(n, rooms), true, true)
+	pages.AddPage("rooms", roomsPage(n), true, true)
 
 	return app.SetRoot(pages, true).Run()
 }
@@ -287,12 +282,13 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room], st
 	}
 }
 
-func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
+func roomsPage(n nav) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName)
 	table := newTable(" Rooms ")
 	status := newStatusBar()
-	state := &tableState[lk.Room]{cols: roomCols, items: rooms, sortAsc: true}
+	state := &tableState[lk.Room]{cols: roomCols, sortAsc: true}
 
+	status.SetText(" loading...")
 	state.render(table)
 	table.SetInputCapture(roomsInputCapture(n, table, state, status))
 
@@ -318,7 +314,23 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 		}()
 	})
 
+	fetchAndRender := func() {
+		fetched, err := n.client.ListRooms(n.ctx)
+
+		n.app.QueueUpdateDraw(func() {
+			updateStatus(status, err)
+			if err != nil {
+				return
+			}
+
+			state.items = fetched
+			state.render(table)
+		})
+	}
+
 	go func() {
+		fetchAndRender()
+
 		ticker := time.NewTicker(refreshInterval)
 		defer ticker.Stop()
 
@@ -327,17 +339,7 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 			case <-n.ctx.Done():
 				return
 			case <-ticker.C:
-				fetched, err := n.client.ListRooms(n.ctx)
-
-				n.app.QueueUpdateDraw(func() {
-					updateStatus(status, err)
-					if err != nil {
-						return
-					}
-
-					state.items = fetched
-					state.render(table)
-				})
+				fetchAndRender()
 			}
 		}
 	}()
