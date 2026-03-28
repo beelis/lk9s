@@ -124,6 +124,12 @@ var participantCols = []column[lk.Participant]{
 		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Name, b.Name) },
 	},
 	{
+		header:  "KIND",
+		key:     'K',
+		display: func(p lk.Participant) string { return p.Kind },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Kind, b.Kind) },
+	},
+	{
 		header:  "STATE",
 		key:     'S',
 		display: func(p lk.Participant) string { return p.State },

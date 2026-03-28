@@ -39,6 +39,7 @@ func (t TrackState) String() string {
 type Participant struct {
 	Identity    string
 	Name        string
+	Kind        string
 	State       string
 	JoinedAt    int64
 	Metadata    string
@@ -100,6 +101,7 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 		pp[i] = Participant{
 			Identity:    p.GetIdentity(),
 			Name:        p.GetName(),
+			Kind:        p.GetKind().String(),
 			State:       p.GetState().String(),
 			JoinedAt:    p.GetJoinedAt(),
 			Metadata:    p.GetMetadata(),
