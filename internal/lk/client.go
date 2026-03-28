@@ -17,13 +17,35 @@ type Room struct {
 	Metadata        string
 }
 
+type TrackState uint8
+
+const (
+	TrackAbsent TrackState = iota
+	TrackActive
+	TrackMuted
+)
+
+func (t TrackState) String() string {
+	switch t {
+	case TrackActive:
+		return "●"
+	case TrackMuted:
+		return "○"
+	default:
+		return "-"
+	}
+}
+
 type Participant struct {
-	Identity string
-	Name     string
-	State    string
-	Tracks   int
-	JoinedAt int64
-	Metadata string
+	Identity    string
+	Name        string
+	State       string
+	JoinedAt    int64
+	Metadata    string
+	Mic         TrackState
+	Camera      TrackState
+	Screen      TrackState
+	ScreenAudio TrackState
 }
 
 type Egress struct {
@@ -74,17 +96,35 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 
 	pp := make([]Participant, len(res.GetParticipants()))
 	for i, p := range res.GetParticipants() {
+		tracks := p.GetTracks()
 		pp[i] = Participant{
-			Identity: p.GetIdentity(),
-			Name:     p.GetName(),
-			State:    p.GetState().String(),
-			Tracks:   len(p.GetTracks()),
-			JoinedAt: p.GetJoinedAt(),
-			Metadata: p.GetMetadata(),
+			Identity:    p.GetIdentity(),
+			Name:        p.GetName(),
+			State:       p.GetState().String(),
+			JoinedAt:    p.GetJoinedAt(),
+			Metadata:    p.GetMetadata(),
+			Mic:         trackState(tracks, livekit.TrackSource_MICROPHONE),
+			Camera:      trackState(tracks, livekit.TrackSource_CAMERA),
+			Screen:      trackState(tracks, livekit.TrackSource_SCREEN_SHARE),
+			ScreenAudio: trackState(tracks, livekit.TrackSource_SCREEN_SHARE_AUDIO),
 		}
 	}
 
 	return pp, nil
+}
+
+func trackState(tracks []*livekit.TrackInfo, source livekit.TrackSource) TrackState {
+	for _, t := range tracks {
+		if t.GetSource() == source {
+			if t.GetMuted() {
+				return TrackMuted
+			}
+
+			return TrackActive
+		}
+	}
+
+	return TrackAbsent
 }
 
 func (c *Client) ListEgresses(ctx context.Context, room string) ([]Egress, error) {

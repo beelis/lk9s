@@ -130,10 +130,28 @@ var participantCols = []column[lk.Participant]{
 		compare: func(a, b lk.Participant) int { return cmp.Compare(a.State, b.State) },
 	},
 	{
-		header:  "TRACKS",
-		key:     'T',
-		display: func(p lk.Participant) string { return fmt.Sprintf("%d", p.Tracks) },
-		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Tracks, b.Tracks) },
+		header:  "MIC",
+		key:     'M',
+		display: func(p lk.Participant) string { return p.Mic.String() },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Mic, b.Mic) },
+	},
+	{
+		header:  "CAM",
+		key:     'C',
+		display: func(p lk.Participant) string { return p.Camera.String() },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Camera, b.Camera) },
+	},
+	{
+		header:  "SCREEN",
+		key:     'R',
+		display: func(p lk.Participant) string { return p.Screen.String() },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Screen, b.Screen) },
+	},
+	{
+		header:  "SCR.AUD",
+		key:     'A',
+		display: func(p lk.Participant) string { return p.ScreenAudio.String() },
+		compare: func(a, b lk.Participant) int { return cmp.Compare(a.ScreenAudio, b.ScreenAudio) },
 	},
 	{
 		header:  "JOINED",
@@ -334,7 +352,6 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 	state.render(table)
 
 	ctx, cancel := context.WithCancel(n.ctx)
-	defer cancel()
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
@@ -407,7 +424,6 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 	state.render(table)
 
 	ctx, cancel := context.WithCancel(n.ctx)
-	defer cancel()
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
