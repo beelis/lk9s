@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"errors"
+
 	"github.com/beelis/lk9s/internal/config"
 	"github.com/rivo/tview"
 )
@@ -33,6 +35,10 @@ func SelectContext(contexts []config.Context) (config.Context, error) {
 
 	if err := app.SetRoot(table, true).Run(); err != nil {
 		return config.Context{}, err
+	}
+
+	if selected.Name == "" {
+		return config.Context{}, errors.New("no context selected")
 	}
 
 	return selected, nil

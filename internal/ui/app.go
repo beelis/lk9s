@@ -214,7 +214,7 @@ func Run(client roomLister, contextName string) error {
 	return app.SetRoot(pages, true).Run()
 }
 
-func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room]) func(*tcell.EventKey) *tcell.EventKey {
+func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room], status *tview.TextView) func(*tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := table.GetSelection()
 
@@ -224,11 +224,13 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room]) fu
 
 				go func() {
 					eg, err := n.client.ListEgresses(n.ctx, roomName)
-					if err != nil {
-						return
-					}
 
 					n.app.QueueUpdateDraw(func() {
+						updateStatus(status, err)
+						if err != nil {
+							return
+						}
+
 						n.pages.RemovePage("egresses")
 						n.pages.AddPage("egresses", egressesPage(n, roomName, eg), true, true)
 					})
@@ -262,10 +264,11 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room]) fu
 func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName)
 	table := newTable(" Rooms ")
+	status := newStatusBar()
 	state := &tableState[lk.Room]{cols: roomCols, items: rooms, sortAsc: true}
 
 	state.render(table)
-	table.SetInputCapture(roomsInputCapture(n, table, state))
+	table.SetInputCapture(roomsInputCapture(n, table, state, status))
 
 	table.SetSelectedFunc(func(row, _ int) {
 		if row == 0 || row > len(state.sorted) {
@@ -276,11 +279,13 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 
 		go func() {
 			pp, err := n.client.ListParticipants(n.ctx, roomName)
-			if err != nil {
-				return
-			}
 
 			n.app.QueueUpdateDraw(func() {
+				updateStatus(status, err)
+				if err != nil {
+					return
+				}
+
 				n.pages.RemovePage("participants")
 				n.pages.AddPage("participants", participantsPage(n, roomName, pp), true, true)
 			})
@@ -297,11 +302,13 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 				return
 			case <-ticker.C:
 				fetched, err := n.client.ListRooms(n.ctx)
-				if err != nil {
-					return
-				}
 
 				n.app.QueueUpdateDraw(func() {
+					updateStatus(status, err)
+					if err != nil {
+						return
+					}
+
 					state.items = fetched
 					state.render(table)
 				})
@@ -314,12 +321,14 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
+		AddItem(status, 1, 0, false).
 		AddItem(legend(keys), 1, 0, false)
 }
 
 func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName)
 	table := newTable(" Participants ")
+	status := newStatusBar()
 	state := &tableState[lk.Participant]{cols: participantCols, items: initial, sortAsc: true}
 
 	state.render(table)
@@ -366,11 +375,13 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 				return
 			case <-ticker.C:
 				fetched, err := n.client.ListParticipants(ctx, roomName)
-				if err != nil {
-					return
-				}
 
 				n.app.QueueUpdateDraw(func() {
+					updateStatus(status, err)
+					if err != nil {
+						return
+					}
+
 					state.items = fetched
 					state.render(table)
 				})
@@ -383,12 +394,14 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
+		AddItem(status, 1, 0, false).
 		AddItem(legend(keys), 1, 0, false)
 }
 
 func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName + " > egresses")
 	table := newTable(" Egresses ")
+	status := newStatusBar()
 	state := &tableState[lk.Egress]{cols: egressCols, items: initial, sortAsc: true}
 
 	state.render(table)
@@ -423,11 +436,13 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 				return
 			case <-ticker.C:
 				fetched, err := n.client.ListEgresses(ctx, roomName)
-				if err != nil {
-					return
-				}
 
 				n.app.QueueUpdateDraw(func() {
+					updateStatus(status, err)
+					if err != nil {
+						return
+					}
+
 					state.items = fetched
 					state.render(table)
 				})
@@ -440,6 +455,7 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
+		AddItem(status, 1, 0, false).
 		AddItem(legend(keys), 1, 0, false)
 }
 
@@ -489,6 +505,20 @@ func newTable(title string) *tview.Table {
 	table.SetTitle(title).SetBorder(true)
 
 	return table
+}
+
+func newStatusBar() *tview.TextView {
+	return tview.NewTextView().SetDynamicColors(true)
+}
+
+func updateStatus(bar *tview.TextView, err error) {
+	if err != nil {
+		bar.SetText("[red] error: " + err.Error())
+
+		return
+	}
+
+	bar.SetText("")
 }
 
 func legend(entries [][2]string) *tview.TextView {
