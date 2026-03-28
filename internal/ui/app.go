@@ -28,6 +28,12 @@ type tableState[T any] struct {
 	sorted  []T
 	sortCol int
 	sortAsc bool
+	resort  bool
+}
+
+func (s *tableState[T]) setItems(items []T) {
+	s.items = items
+	s.resort = true
 }
 
 func (s *tableState[T]) render(table *tview.Table) {
@@ -47,15 +53,18 @@ func (s *tableState[T]) render(table *tview.Table) {
 		table.SetCell(0, col, tview.NewTableCell(label).SetSelectable(false).SetExpansion(1))
 	}
 
-	s.sorted = slices.Clone(s.items)
-	slices.SortFunc(s.sorted, func(a, b T) int {
-		n := s.cols[s.sortCol].compare(a, b)
-		if !s.sortAsc {
-			return -n
-		}
+	if s.resort {
+		s.sorted = slices.Clone(s.items)
+		slices.SortFunc(s.sorted, func(a, b T) int {
+			n := s.cols[s.sortCol].compare(a, b)
+			if !s.sortAsc {
+				return -n
+			}
 
-		return n
-	})
+			return n
+		})
+		s.resort = false
+	}
 
 	for row, item := range s.sorted {
 		for col, c := range s.cols {
@@ -76,6 +85,8 @@ func (s *tableState[T]) handleKey(r rune) bool {
 			s.sortCol = i
 			s.sortAsc = true
 		}
+
+		s.resort = true
 
 		return true
 	}
@@ -323,7 +334,7 @@ func roomsPage(n nav) tview.Primitive {
 				return
 			}
 
-			state.items = fetched
+			state.setItems(fetched)
 			state.render(table)
 		})
 	}
@@ -357,7 +368,8 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName)
 	table := newTable(" Participants ")
 	status := newStatusBar()
-	state := &tableState[lk.Participant]{cols: participantCols, items: initial, sortAsc: true}
+	state := &tableState[lk.Participant]{cols: participantCols, sortAsc: true}
+	state.setItems(initial)
 
 	state.render(table)
 
@@ -429,7 +441,8 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName + " > egresses")
 	table := newTable(" Egresses ")
 	status := newStatusBar()
-	state := &tableState[lk.Egress]{cols: egressCols, items: initial, sortAsc: true}
+	state := &tableState[lk.Egress]{cols: egressCols, sortAsc: true}
+	state.setItems(initial)
 
 	state.render(table)
 
