@@ -41,5 +41,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("no contexts defined in ~/%s", filename)
 	}
 
+	for _, ctx := range cfg.Contexts {
+		if ctx.Name == "" || ctx.URL == "" || ctx.APIKey == "" || ctx.APISecret == "" {
+			return nil, fmt.Errorf("context %q is missing required fields (url, api-key, api-secret)", ctx.Name)
+		}
+	}
+
 	return &cfg, nil
 }
