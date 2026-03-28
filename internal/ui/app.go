@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/beelis/lk9s/internal/lk"
@@ -561,15 +562,18 @@ func updateStatus(bar *tview.TextView, err error) {
 }
 
 func legend(entries [][2]string) *tview.TextView {
-	text := ""
+	var b strings.Builder
 
 	for _, e := range entries {
-		if text != "" {
-			text += "  "
+		if b.Len() > 0 {
+			b.WriteString("  ")
 		}
 
-		text += "<" + e[0] + "> " + e[1]
+		b.WriteString("<")
+		b.WriteString(e[0])
+		b.WriteString("> ")
+		b.WriteString(e[1])
 	}
 
-	return tview.NewTextView().SetText(" " + text)
+	return tview.NewTextView().SetText(" " + b.String())
 }
