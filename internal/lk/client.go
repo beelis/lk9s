@@ -13,7 +13,7 @@ type Room struct {
 	Name            string
 	SID             string
 	NumParticipants uint32
-	CreationTime    int64
+	CreationTime    int64 // Unix seconds
 	Metadata        string
 }
 
@@ -53,7 +53,7 @@ type Egress struct {
 	ID        string
 	Status    string
 	Type      string
-	StartedAt int64
+	StartedAt int64 // Unix nanoseconds
 	Error     string
 }
 
