@@ -259,9 +259,11 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room], st
 						n.pages.AddPage("egresses", egressesPage(n, roomName, eg), true, true)
 					})
 				}()
+
+				return nil
 			}
 
-			return nil
+			return event
 		}
 
 		if event.Rune() == 'm' {
