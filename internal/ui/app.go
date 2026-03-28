@@ -193,17 +193,21 @@ type nav struct {
 	pages       *tview.Pages
 	client      roomLister
 	contextName string
+	ctx         context.Context
 }
 
 func Run(client roomLister, contextName string) error {
-	rooms, err := client.ListRooms(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rooms, err := client.ListRooms(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch rooms: %w", err)
 	}
 
 	app := tview.NewApplication()
 	pages := tview.NewPages()
-	n := nav{app: app, pages: pages, client: client, contextName: contextName}
+	n := nav{app: app, pages: pages, client: client, contextName: contextName, ctx: ctx}
 
 	pages.AddPage("rooms", roomsPage(n, rooms), true, true)
 
@@ -219,7 +223,7 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room]) fu
 				roomName := state.sorted[row-1].Name
 
 				go func() {
-					eg, err := n.client.ListEgresses(context.Background(), roomName)
+					eg, err := n.client.ListEgresses(n.ctx, roomName)
 					if err != nil {
 						return
 					}
@@ -271,7 +275,7 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 		roomName := state.sorted[row-1].Name
 
 		go func() {
-			pp, err := n.client.ListParticipants(context.Background(), roomName)
+			pp, err := n.client.ListParticipants(n.ctx, roomName)
 			if err != nil {
 				return
 			}
@@ -287,16 +291,21 @@ func roomsPage(n nav, rooms []lk.Room) tview.Primitive {
 		ticker := time.NewTicker(refreshInterval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			fetched, err := n.client.ListRooms(context.Background())
-			if err != nil {
+		for {
+			select {
+			case <-n.ctx.Done():
 				return
-			}
+			case <-ticker.C:
+				fetched, err := n.client.ListRooms(n.ctx)
+				if err != nil {
+					return
+				}
 
-			n.app.QueueUpdateDraw(func() {
-				state.items = fetched
-				state.render(table)
-			})
+				n.app.QueueUpdateDraw(func() {
+					state.items = fetched
+					state.render(table)
+				})
+			}
 		}
 	}()
 
@@ -315,7 +324,8 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 
 	state.render(table)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(n.ctx)
+	defer cancel()
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
@@ -383,7 +393,8 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 
 	state.render(table)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(n.ctx)
+	defer cancel()
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
