@@ -1,9 +1,13 @@
 # Binary
 /lk9s
 *.exe
+/bin/
+/dist/
 
 # IDE
 .idea/
+.vscode/
+*.iml
 
 # Go build cache
 *.test
@@ -12,3 +16,17 @@
 # Claude
 .claude/
 CLAUDE.md
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# Secrets
+*.pem
+*.key
+.env
+.env.*
+!.env.example
