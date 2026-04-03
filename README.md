@@ -2,11 +2,6 @@
 
 A k9s-style terminal UI for [LiveKit](https://livekit.io).
 
-## Requirements
-
-- Go 1.26+
-- A running LiveKit server with API credentials
-
 ## Installation
 
 ```bash
