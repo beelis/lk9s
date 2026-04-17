@@ -396,6 +396,18 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 			return nil
 		}
 
+		if event.Rune() == 'a' {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.sorted) {
+				p := state.sorted[row-1]
+
+				n.pages.RemovePage("attributes")
+				n.pages.AddPage("attributes", attributesPage(n, p.Identity, p.Attributes), true, true)
+			}
+
+			return nil
+		}
+
 		if !state.handleKey(event.Rune()) {
 			return event
 		}
@@ -429,7 +441,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		}
 	}()
 
-	keys := [][2]string{{"Esc", "back"}, {"m", "metadata"}, {"Shift+letter", "sort"}}
+	keys := [][2]string{{"Esc", "back"}, {"m", "metadata"}, {"a", "attributes"}, {"Shift+letter", "sort"}}
 
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
@@ -506,6 +518,41 @@ func metadataPage(n nav, title, content string) tview.Primitive {
 	body.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			n.pages.RemovePage("metadata")
+
+			return nil
+		}
+
+		return event
+	})
+
+	return tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(body, 0, 3, true).
+			AddItem(nil, 0, 1, false), 0, 2, true).
+		AddItem(nil, 0, 1, false)
+}
+
+func attributesPage(n nav, title string, attrs map[string]string) tview.Primitive {
+	var content string
+	if len(attrs) == 0 {
+		content = "(no attributes)"
+	} else {
+		out, err := json.MarshalIndent(attrs, "", "  ")
+		if err != nil {
+			content = fmt.Sprintf("%v", attrs)
+		} else {
+			content = string(out)
+		}
+	}
+
+	body := tview.NewTextView().SetText(content)
+	body.SetBorder(true).SetTitle(" attributes: " + title + " ")
+
+	body.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			n.pages.RemovePage("attributes")
 
 			return nil
 		}

@@ -43,6 +43,7 @@ type Participant struct {
 	State       string
 	JoinedAt    int64
 	Metadata    string
+	Attributes  map[string]string
 	Mic         TrackState
 	Camera      TrackState
 	Screen      TrackState
@@ -105,6 +106,7 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 			State:       p.GetState().String(),
 			JoinedAt:    p.GetJoinedAt(),
 			Metadata:    p.GetMetadata(),
+			Attributes:  p.GetAttributes(),
 			Mic:         trackState(tracks, livekit.TrackSource_MICROPHONE),
 			Camera:      trackState(tracks, livekit.TrackSource_CAMERA),
 			Screen:      trackState(tracks, livekit.TrackSource_SCREEN_SHARE),
