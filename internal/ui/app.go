@@ -26,16 +26,17 @@ type nav struct {
 	pages       *tview.Pages
 	client      roomLister
 	contextName string
+	version     string
 	ctx         context.Context
 }
 
-func Run(client roomLister, contextName string) error {
+func Run(client roomLister, contextName, version string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	app := tview.NewApplication()
 	pages := tview.NewPages()
-	n := nav{app: app, pages: pages, client: client, contextName: contextName, ctx: ctx}
+	n := nav{app: app, pages: pages, client: client, contextName: contextName, version: version, ctx: ctx}
 
 	pages.AddPage("rooms", roomsPage(n), true, true)
 

@@ -93,7 +93,8 @@ func roomsInputCapture(
 }
 
 func roomsPage(n nav) tview.Primitive {
-	header := tview.NewTextView().SetText(" ctx: " + n.contextName)
+	version := tview.NewTextView().SetText(fmt.Sprintf(" %-10s %s", "LK9s Rev:", n.version))
+	header := tview.NewTextView().SetText(fmt.Sprintf(" %-10s %s", "ctx:", n.contextName))
 	table := newTable(" Rooms ")
 	status := newStatusBar()
 	state := &tableState[lk.Room]{cols: roomCols, sortAsc: true}
@@ -159,6 +160,7 @@ func roomsPage(n nav) tview.Primitive {
 	keys := [][2]string{{"Enter", "participants"}, {"e", "egresses"}, {"m", "metadata"}, {"Shift+letter", "sort"}}
 
 	return tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(version, 1, 0, false).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
 		AddItem(status, 1, 0, false).
