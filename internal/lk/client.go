@@ -37,13 +37,15 @@ func (t TrackState) String() string {
 }
 
 type Permission struct {
-	CanPublish         bool
-	CanSubscribe       bool
-	CanPublishData     bool
-	CanUpdateMetadata  bool
-	Hidden             bool
-	Recorder           bool
-	CanPublishSources  []string
+	CanPublish            bool
+	CanSubscribe          bool
+	CanPublishData        bool
+	CanUpdateMetadata     bool
+	Hidden                bool
+	Recorder              bool
+	CanPublishSources     []string
+	CanManageAgentSession bool
+	CanSubscribeMetrics   bool
 }
 
 type Participant struct {
@@ -139,14 +141,17 @@ func participantPermission(perm *livekit.ParticipantPermission) Permission {
 		sources[i] = s.String()
 	}
 
+	//nolint:staticcheck
 	return Permission{
-		CanPublish:        perm.GetCanPublish(),
-		CanSubscribe:      perm.GetCanSubscribe(),
-		CanPublishData:    perm.GetCanPublishData(),
-		CanUpdateMetadata: perm.GetCanUpdateMetadata(),
-		Hidden:            perm.GetHidden(),
-		Recorder:          perm.GetRecorder(),
-		CanPublishSources: sources,
+		CanPublish:            perm.GetCanPublish(),
+		CanSubscribe:          perm.GetCanSubscribe(),
+		CanPublishData:        perm.GetCanPublishData(),
+		CanUpdateMetadata:     perm.GetCanUpdateMetadata(),
+		CanManageAgentSession: perm.GetCanManageAgentSession(),
+		CanSubscribeMetrics:   perm.GetCanSubscribeMetrics(),
+		Hidden:                perm.GetHidden(),
+		Recorder:              perm.GetRecorder(),
+		CanPublishSources:     sources,
 	}
 }
 

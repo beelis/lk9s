@@ -67,6 +67,7 @@ var participantCols = []column[lk.Participant]{
 	},
 }
 
+//nolint:gocognit
 func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName)
 	table := newTable(" Participants ")
@@ -144,6 +145,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 
 				n.app.QueueUpdateDraw(func() {
 					updateStatus(status, err)
+
 					if err != nil {
 						return
 					}
@@ -155,7 +157,12 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		}
 	}()
 
-	keys := [][2]string{{"Esc", "back"}, {"m", "metadata"}, {"a", "attributes"}, {"p", "permissions"}, {"Shift+letter", "sort"}}
+	keys := [][2]string{
+		{"Esc", "back"}, {"m", "metadata"},
+		{"a", "attributes"},
+		{"p", "permissions"},
+		{"Shift+letter", "sort"},
+	}
 
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).

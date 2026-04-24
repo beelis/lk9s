@@ -19,6 +19,8 @@ func permissionsPage(n nav, identity string, perm lk.Permission) tview.Primitive
 	flag("CanSubscribe", perm.CanSubscribe)
 	flag("CanPublishData", perm.CanPublishData)
 	flag("CanUpdateMetadata", perm.CanUpdateMetadata)
+	flag("CanSubscribeMetrics", perm.CanSubscribeMetrics)
+	flag("CanManageAgentSession", perm.CanManageAgentSession)
 	flag("Hidden", perm.Hidden)
 	flag("Recorder", perm.Recorder)
 
