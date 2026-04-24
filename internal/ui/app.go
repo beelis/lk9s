@@ -39,7 +39,7 @@ func Run(client roomLister, contextName string) error {
 }
 
 func newTable(title string) *tview.Table {
-	table := tview.NewTable().SetBorders(false).SetSelectable(true, false)
+	table := tview.NewTable().SetBorders(false).SetSelectable(true, false).SetFixed(1, 0)
 	table.SetTitle(title).SetBorder(true)
 
 	return table
