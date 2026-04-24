@@ -3,7 +3,11 @@ package ui
 import (
 	"context"
 	"strings"
+	"syscall"
 	"time"
+
+	"os"
+	"os/signal"
 
 	"github.com/beelis/lk9s/internal/lk"
 	"github.com/rivo/tview"
@@ -26,7 +30,7 @@ type nav struct {
 }
 
 func Run(client roomLister, contextName string) error {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	app := tview.NewApplication()
