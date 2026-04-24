@@ -67,7 +67,7 @@ var participantCols = []column[lk.Participant]{
 	},
 }
 
-//nolint:gocognit
+//nolint:gocognit,funlen
 func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName)
 	table := newTable(" Participants ")
