@@ -110,6 +110,18 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 			return nil
 		}
 
+		if event.Rune() == 'p' {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.sorted) {
+				p := state.sorted[row-1]
+
+				n.pages.RemovePage("permissions")
+				n.pages.AddPage("permissions", permissionsPage(n, p.Identity, p.Permission), true, true)
+			}
+
+			return nil
+		}
+
 		if !state.handleKey(event.Rune()) {
 			return event
 		}
@@ -143,7 +155,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		}
 	}()
 
-	keys := [][2]string{{"Esc", "back"}, {"m", "metadata"}, {"a", "attributes"}, {"Shift+letter", "sort"}}
+	keys := [][2]string{{"Esc", "back"}, {"m", "metadata"}, {"a", "attributes"}, {"p", "permissions"}, {"Shift+letter", "sort"}}
 
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).

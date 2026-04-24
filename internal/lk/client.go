@@ -36,6 +36,16 @@ func (t TrackState) String() string {
 	}
 }
 
+type Permission struct {
+	CanPublish         bool
+	CanSubscribe       bool
+	CanPublishData     bool
+	CanUpdateMetadata  bool
+	Hidden             bool
+	Recorder           bool
+	CanPublishSources  []string
+}
+
 type Participant struct {
 	Identity    string
 	Name        string
@@ -44,6 +54,7 @@ type Participant struct {
 	JoinedAt    int64
 	Metadata    string
 	Attributes  map[string]string
+	Permission  Permission
 	Mic         TrackState
 	Camera      TrackState
 	Screen      TrackState
@@ -107,6 +118,7 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 			JoinedAt:    p.GetJoinedAt(),
 			Metadata:    p.GetMetadata(),
 			Attributes:  p.GetAttributes(),
+			Permission:  participantPermission(p.GetPermission()),
 			Mic:         trackState(tracks, livekit.TrackSource_MICROPHONE),
 			Camera:      trackState(tracks, livekit.TrackSource_CAMERA),
 			Screen:      trackState(tracks, livekit.TrackSource_SCREEN_SHARE),
@@ -115,6 +127,27 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 	}
 
 	return pp, nil
+}
+
+func participantPermission(perm *livekit.ParticipantPermission) Permission {
+	if perm == nil {
+		return Permission{}
+	}
+
+	sources := make([]string, len(perm.GetCanPublishSources()))
+	for i, s := range perm.GetCanPublishSources() {
+		sources[i] = s.String()
+	}
+
+	return Permission{
+		CanPublish:        perm.GetCanPublish(),
+		CanSubscribe:      perm.GetCanSubscribe(),
+		CanPublishData:    perm.GetCanPublishData(),
+		CanUpdateMetadata: perm.GetCanUpdateMetadata(),
+		Hidden:            perm.GetHidden(),
+		Recorder:          perm.GetRecorder(),
+		CanPublishSources: sources,
+	}
 }
 
 func trackState(tracks []*livekit.TrackInfo, source livekit.TrackSource) TrackState {
