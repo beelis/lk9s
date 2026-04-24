@@ -37,7 +37,12 @@ var roomCols = []column[lk.Room]{
 	},
 }
 
-func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room], status *tview.TextView) func(*tcell.EventKey) *tcell.EventKey {
+func roomsInputCapture(
+	n nav,
+	table *tview.Table,
+	state *tableState[lk.Room],
+	status *tview.TextView,
+) func(*tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := table.GetSelection()
 
@@ -50,6 +55,7 @@ func roomsInputCapture(n nav, table *tview.Table, state *tableState[lk.Room], st
 
 					n.app.QueueUpdateDraw(func() {
 						updateStatus(status, err)
+
 						if err != nil {
 							return
 						}
@@ -108,6 +114,7 @@ func roomsPage(n nav) tview.Primitive {
 
 			n.app.QueueUpdateDraw(func() {
 				updateStatus(status, err)
+
 				if err != nil {
 					return
 				}
@@ -123,6 +130,7 @@ func roomsPage(n nav) tview.Primitive {
 
 		n.app.QueueUpdateDraw(func() {
 			updateStatus(status, err)
+
 			if err != nil {
 				return
 			}

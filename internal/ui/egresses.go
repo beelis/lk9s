@@ -90,6 +90,7 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 
 				n.app.QueueUpdateDraw(func() {
 					updateStatus(status, err)
+
 					if err != nil {
 						return
 					}
