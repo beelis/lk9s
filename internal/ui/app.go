@@ -434,7 +434,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 						return
 					}
 
-					state.items = fetched
+					state.setItems(fetched)
 					state.render(table)
 				})
 			}
@@ -495,7 +495,7 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 						return
 					}
 
-					state.items = fetched
+					state.setItems(fetched)
 					state.render(table)
 				})
 			}
