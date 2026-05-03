@@ -51,7 +51,7 @@ type Permission struct {
 type Participant struct {
 	Identity    string
 	Name        string
-	Kind        string
+	Kind        livekit.ParticipantInfo_Kind
 	State       string
 	JoinedAt    int64
 	Metadata    string
@@ -115,7 +115,7 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 		pp[i] = Participant{
 			Identity:    p.GetIdentity(),
 			Name:        p.GetName(),
-			Kind:        p.GetKind().String(),
+			Kind:        p.GetKind(),
 			State:       p.GetState().String(),
 			JoinedAt:    p.GetJoinedAt(),
 			Metadata:    p.GetMetadata(),
