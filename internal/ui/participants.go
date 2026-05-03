@@ -26,7 +26,7 @@ var participantCols = []column[lk.Participant]{
 	{
 		header:  "KIND",
 		key:     'K',
-		display: func(p lk.Participant) string { return p.Kind },
+		display: func(p lk.Participant) string { return p.Kind.String() },
 		compare: func(a, b lk.Participant) int { return cmp.Compare(a.Kind, b.Kind) },
 	},
 	{
