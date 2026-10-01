@@ -102,7 +102,7 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 		}
 	}()
 
-	keys := [][2]string{{"Esc", "back"}, {"Shift+letter", "sort"}}
+	keys := [][2]string{{"Esc", "back"}, {"Shift+letter", "sort"}, {":", "command"}}
 
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).

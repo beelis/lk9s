@@ -69,7 +69,8 @@ var participantCols = []column[lk.Participant]{
 
 //nolint:gocognit,funlen
 func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Primitive {
-	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName)
+	header := tview.NewTextView().SetDynamicColors(true).
+		SetText(" ctx: " + n.contextName + writeTag(n) + " > " + roomName)
 	table := newTable(" Participants ")
 	status := newStatusBar()
 	state := &tableState[lk.Participant]{cols: participantCols, sortAsc: true}
@@ -79,10 +80,92 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 
 	ctx, cancel := context.WithCancel(n.ctx)
 
+	// prevSnapshot, activityLog and eventsView back the "activity" view:
+	// each refresh diffs against prevSnapshot to synthesize join/leave/
+	// track events into activityLog, and appends them live to eventsView
+	// when the activity page is the one currently open (nil otherwise).
+	prevSnapshot := snapshotParticipants(initial)
+
+	var (
+		activityLog []activityEvent
+		eventsView  *tview.TextView
+	)
+
+	// keepStatus, when non-nil, leaves the status bar as the caller set it
+	// (e.g. an error from an action that just ran) instead of overwriting
+	// it with this refresh's own result; the participant list is always
+	// updated.
+	fetchAndRender := func(keepStatus error) {
+		fetched, err := n.client.ListParticipants(ctx, roomName)
+
+		n.app.QueueUpdateDraw(func() {
+			if err == nil {
+				state.setItems(fetched)
+				state.render(table)
+
+				diffs := diffParticipants(prevSnapshot, fetched)
+				prevSnapshot = snapshotParticipants(fetched)
+
+				if len(diffs) > 0 {
+					activityLog = append(activityLog, diffs...)
+					if len(activityLog) > maxActivityEvents {
+						activityLog = activityLog[len(activityLog)-maxActivityEvents:]
+					}
+
+					if eventsView != nil {
+						appendActivityLines(eventsView, diffs)
+					}
+				}
+			}
+
+			if keepStatus != nil {
+				return
+			}
+
+			updateListStatus(status, err, len(fetched))
+		})
+	}
+
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			cancel()
 			n.pages.SwitchToPage("rooms")
+
+			return nil
+		}
+
+		if event.Rune() == '/' {
+			n.pages.AddPage("filter", filterBarPage(n, state.filterText, func(f string) {
+				state.setFilter(f)
+				state.render(table)
+			}), true, true)
+
+			return nil
+		}
+
+		if event.Key() == tcell.KeyCtrlD {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.sorted) && requireWrite(n, status) {
+				identity := state.sorted[row-1].Identity
+
+				n.pages.RemovePage("confirm-kick")
+				n.pages.AddPage("confirm-kick", confirmKickParticipantPage(n, roomName, identity, func(err error) {
+					updateStatus(status, err)
+					go fetchAndRender(err)
+				}), true, true)
+			}
+
+			return nil
+		}
+
+		if event.Rune() == 'T' {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.sorted) {
+				identity := state.sorted[row-1].Identity
+
+				n.pages.RemovePage("token-form")
+				n.pages.AddPage("token-form", tokenFormPage(n, identity, roomName), true, true)
+			}
 
 			return nil
 		}
@@ -117,8 +200,32 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 				p := state.sorted[row-1]
 
 				n.pages.RemovePage("permissions")
-				n.pages.AddPage("permissions", permissionsPage(n, p.Identity, p.Permission), true, true)
+				n.pages.AddPage("permissions", permissionsPage(n, roomName, p.Identity, p.Permission, func() {
+					go fetchAndRender(nil)
+				}), true, true)
 			}
+
+			return nil
+		}
+
+		if event.Rune() == 't' {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.sorted) {
+				p := state.sorted[row-1]
+
+				n.pages.RemovePage("tracks")
+				n.pages.AddPage("tracks", tracksPage(n, roomName, p.Identity, p.Tracks), true, true)
+			}
+
+			return nil
+		}
+
+		if event.Rune() == 'v' {
+			n.pages.RemovePage("activity")
+			n.pages.AddPage("activity", activityPage(n, roomName, activityLog,
+				func(tv *tview.TextView) { eventsView = tv },
+				func() { eventsView = nil },
+			), true, true)
 
 			return nil
 		}
@@ -132,6 +239,8 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		return nil
 	})
 
+	updateListStatus(status, nil, len(initial))
+
 	go func() {
 		ticker := time.NewTicker(refreshInterval)
 		defer ticker.Stop()
@@ -141,18 +250,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				fetched, err := n.client.ListParticipants(ctx, roomName)
-
-				n.app.QueueUpdateDraw(func() {
-					updateStatus(status, err)
-
-					if err != nil {
-						return
-					}
-
-					state.setItems(fetched)
-					state.render(table)
-				})
+				fetchAndRender(nil)
 			}
 		}
 	}()
@@ -161,7 +259,13 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		{"Esc", "back"}, {"m", "metadata"},
 		{"a", "attributes"},
 		{"p", "permissions"},
+		{"t", "tracks"},
+		{"T", "token"},
+		{"v", "activity"},
+		{"Ctrl+D", "kick"},
+		{"/", "filter"},
 		{"Shift+letter", "sort"},
+		{":", "command"},
 	}
 
 	return tview.NewFlex().SetDirection(tview.FlexRow).

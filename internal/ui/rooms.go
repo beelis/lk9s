@@ -42,9 +42,42 @@ func roomsInputCapture(
 	table *tview.Table,
 	state *tableState[lk.Room],
 	status *tview.TextView,
+	refresh func(keepStatus error),
 ) func(*tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := table.GetSelection()
+
+		if event.Rune() == '/' {
+			n.pages.AddPage("filter", filterBarPage(n, state.filterText, func(f string) {
+				state.setFilter(f)
+				state.render(table)
+			}), true, true)
+
+			return nil
+		}
+
+		if event.Key() == tcell.KeyCtrlE {
+			if text := status.GetText(true); text != "" {
+				n.pages.RemovePage("status-detail")
+				n.pages.AddPage("status-detail", statusDetailPage(n, text), true, true)
+			}
+
+			return nil
+		}
+
+		if event.Key() == tcell.KeyCtrlD {
+			if row > 0 && row <= len(state.sorted) && requireWrite(n, status) {
+				roomName := state.sorted[row-1].Name
+
+				n.pages.RemovePage("confirm-delete")
+				n.pages.AddPage("confirm-delete", confirmDeleteRoomPage(n, roomName, func(err error) {
+					updateStatus(status, err)
+					go refresh(err)
+				}), true, true)
+			}
+
+			return nil
+		}
 
 		if event.Rune() == 'e' {
 			if row > 0 && row <= len(state.sorted) {
@@ -82,6 +115,72 @@ func roomsInputCapture(
 			return nil
 		}
 
+		if event.Rune() == 'i' {
+			if row > 0 && row <= len(state.sorted) {
+				r := state.sorted[row-1]
+
+				n.pages.RemovePage("roominfo")
+				n.pages.AddPage("roominfo", roomInfoPage(n, r), true, true)
+			}
+
+			return nil
+		}
+
+		if event.Rune() == 'g' {
+			if row > 0 && row <= len(state.sorted) {
+				roomName := state.sorted[row-1].Name
+
+				go func() {
+					dd, err := n.client.ListAgentDispatches(n.ctx, roomName)
+
+					n.app.QueueUpdateDraw(func() {
+						updateStatus(status, err)
+
+						if err != nil {
+							return
+						}
+
+						n.pages.RemovePage("agents")
+						n.pages.AddPage("agents", agentsPage(n, roomName, dd), true, true)
+					})
+				}()
+
+				return nil
+			}
+
+			return event
+		}
+
+		if event.Rune() == 'T' {
+			if row > 0 && row <= len(state.sorted) {
+				roomName := state.sorted[row-1].Name
+
+				n.pages.RemovePage("token-form")
+				n.pages.AddPage("token-form", tokenFormPage(n, "", roomName), true, true)
+			}
+
+			return nil
+		}
+
+		if event.Rune() == 's' {
+			go func() {
+				entries, err := n.client.ListSIP(n.ctx)
+
+				n.app.QueueUpdateDraw(func() {
+					updateStatus(status, err)
+
+					if err != nil {
+						return
+					}
+
+					n.pages.RemovePage("sip")
+					n.pages.AddPage("sip", sipPage(n, entries), true, true)
+				})
+			}()
+
+			return nil
+		}
+
 		if !state.handleKey(event.Rune()) {
 			return event
 		}
@@ -94,14 +193,36 @@ func roomsInputCapture(
 
 func roomsPage(n nav) tview.Primitive {
 	version := tview.NewTextView().SetText(fmt.Sprintf(" %-10s %s", "LK9s Rev:", n.version))
-	header := tview.NewTextView().SetText(fmt.Sprintf(" %-10s %s", "ctx:", n.contextName))
+	header := tview.NewTextView().SetDynamicColors(true).
+		SetText(fmt.Sprintf(" %-10s %s%s", "ctx:", n.contextName, writeTag(n)))
 	table := newTable(" Rooms ")
 	status := newStatusBar()
 	state := &tableState[lk.Room]{cols: roomCols, sortAsc: true}
 
 	status.SetText(" loading...")
 	state.render(table)
-	table.SetInputCapture(roomsInputCapture(n, table, state, status))
+
+	// keepStatus, when non-nil, leaves the status bar as the caller set it
+	// (e.g. an error from an action that just ran) instead of overwriting
+	// it with this refresh's own result; the room list is always updated.
+	fetchAndRender := func(keepStatus error) {
+		fetched, err := n.client.ListRooms(n.ctx)
+
+		n.app.QueueUpdateDraw(func() {
+			if err == nil {
+				state.setItems(fetched)
+				state.render(table)
+			}
+
+			if keepStatus != nil {
+				return
+			}
+
+			updateListStatus(status, err, len(fetched))
+		})
+	}
+
+	table.SetInputCapture(roomsInputCapture(n, table, state, status, fetchAndRender))
 
 	table.SetSelectedFunc(func(row, _ int) {
 		if row == 0 || row > len(state.sorted) {
@@ -126,23 +247,8 @@ func roomsPage(n nav) tview.Primitive {
 		}()
 	})
 
-	fetchAndRender := func() {
-		fetched, err := n.client.ListRooms(n.ctx)
-
-		n.app.QueueUpdateDraw(func() {
-			updateStatus(status, err)
-
-			if err != nil {
-				return
-			}
-
-			state.setItems(fetched)
-			state.render(table)
-		})
-	}
-
 	go func() {
-		fetchAndRender()
+		fetchAndRender(nil)
 
 		ticker := time.NewTicker(refreshInterval)
 		defer ticker.Stop()
@@ -152,12 +258,16 @@ func roomsPage(n nav) tview.Primitive {
 			case <-n.ctx.Done():
 				return
 			case <-ticker.C:
-				fetchAndRender()
+				fetchAndRender(nil)
 			}
 		}
 	}()
 
-	keys := [][2]string{{"Enter", "participants"}, {"e", "egresses"}, {"m", "metadata"}, {"Shift+letter", "sort"}}
+	keys := [][2]string{
+		{"Enter", "participants"}, {"e", "egresses"}, {"m", "metadata"}, {"i", "room info"},
+		{"g", "agents"}, {"s", "sip"}, {"T", "token"}, {"Ctrl+D", "delete"}, {"Ctrl+E", "error detail"},
+		{"Shift+letter", "sort"}, {"/", "filter"}, {":", "command"},
+	}
 
 	return tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(version, 1, 0, false).

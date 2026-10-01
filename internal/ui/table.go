@@ -2,6 +2,7 @@ package ui
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/rivo/tview"
 )
@@ -14,17 +15,44 @@ type column[T any] struct {
 }
 
 type tableState[T any] struct {
-	cols    []column[T]
-	items   []T
-	sorted  []T
-	sortCol int
-	sortAsc bool
-	resort  bool
+	cols       []column[T]
+	items      []T
+	sorted     []T
+	sortCol    int
+	sortAsc    bool
+	resort     bool
+	filterText string
 }
 
 func (s *tableState[T]) setItems(items []T) {
 	s.items = items
 	s.resort = true
+}
+
+// setFilter sets a case-insensitive substring filter matched against every
+// column's display text; an empty filter shows all rows.
+func (s *tableState[T]) setFilter(f string) {
+	f = strings.ToLower(f)
+	if f == s.filterText {
+		return
+	}
+
+	s.filterText = f
+	s.resort = true
+}
+
+func (s *tableState[T]) matches(item T) bool {
+	if s.filterText == "" {
+		return true
+	}
+
+	for _, c := range s.cols {
+		if strings.Contains(strings.ToLower(c.display(item)), s.filterText) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *tableState[T]) render(table *tview.Table) {
@@ -45,7 +73,15 @@ func (s *tableState[T]) render(table *tview.Table) {
 	}
 
 	if s.resort {
-		s.sorted = slices.Clone(s.items)
+		filtered := make([]T, 0, len(s.items))
+
+		for _, item := range s.items {
+			if s.matches(item) {
+				filtered = append(filtered, item)
+			}
+		}
+
+		s.sorted = filtered
 		slices.SortFunc(s.sorted, func(a, b T) int {
 			n := s.cols[s.sortCol].compare(a, b)
 			if !s.sortAsc {

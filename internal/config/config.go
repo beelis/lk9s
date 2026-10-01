@@ -15,6 +15,10 @@ type Context struct {
 	URL       string `yaml:"url"`
 	APIKey    string `yaml:"api-key"`
 	APISecret string `yaml:"api-secret"`
+	// Write must be explicitly set to allow destructive/mutating actions
+	// (delete room, kick participant, mute track, edit permissions, create
+	// room) against this context. Contexts default to read-only.
+	Write bool `yaml:"write"`
 }
 
 type Config struct {
