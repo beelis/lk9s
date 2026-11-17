@@ -133,6 +133,7 @@ type Egress struct {
 type Client struct {
 	rooms         *lksdk.RoomServiceClient
 	egresses      *lksdk.EgressClient
+	ingress       *lksdk.IngressClient
 	sip           *lksdk.SIPClient
 	agentDispatch *lksdk.AgentDispatchClient
 	logger        *slog.Logger
@@ -150,6 +151,7 @@ func NewClient(url, apiKey, apiSecret string, logger *slog.Logger) *Client {
 	return &Client{
 		rooms:         lksdk.NewRoomServiceClient(url, apiKey, apiSecret),
 		egresses:      lksdk.NewEgressClient(url, apiKey, apiSecret),
+		ingress:       lksdk.NewIngressClient(url, apiKey, apiSecret),
 		sip:           lksdk.NewSIPClient(url, apiKey, apiSecret),
 		agentDispatch: lksdk.NewAgentDispatchServiceClient(url, apiKey, apiSecret),
 		logger:        logger,
@@ -656,4 +658,102 @@ func (c *Client) ListSIP(ctx context.Context) ([]SIPEntry, error) {
 	}
 
 	return entries, nil
+}
+
+func (c *Client) StopEgress(ctx context.Context, id string) error {
+	if _, err := c.egresses.StopEgress(ctx, &livekit.StopEgressRequest{EgressId: id}); err != nil {
+		return fmt.Errorf("stop egress: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) CreateDispatch(ctx context.Context, room, agentName, metadata string) error {
+	req := &livekit.CreateAgentDispatchRequest{AgentName: agentName, Room: room, Metadata: metadata}
+	if _, err := c.agentDispatch.CreateDispatch(ctx, req); err != nil {
+		return fmt.Errorf("create agent dispatch: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) DeleteDispatch(ctx context.Context, room, id string) error {
+	req := &livekit.DeleteAgentDispatchRequest{DispatchId: id, Room: room}
+	if _, err := c.agentDispatch.DeleteDispatch(ctx, req); err != nil {
+		return fmt.Errorf("delete agent dispatch: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) UpdateRoomMetadata(ctx context.Context, room, metadata string) error {
+	req := &livekit.UpdateRoomMetadataRequest{Room: room, Metadata: metadata}
+	if _, err := c.rooms.UpdateRoomMetadata(ctx, req); err != nil {
+		return fmt.Errorf("update room metadata: %w", err)
+	}
+
+	return nil
+}
+
+// SendData publishes a data packet to the room; an empty identities slice
+// sends it to every participant.
+func (c *Client) SendData(
+	ctx context.Context, room, topic string, data []byte, identities []string, reliable bool,
+) error {
+	req := &livekit.SendDataRequest{
+		Room:                  room,
+		Data:                  data,
+		DestinationIdentities: identities,
+	}
+
+	if !reliable {
+		req.Kind = livekit.DataPacket_LOSSY
+	}
+
+	if topic != "" {
+		req.Topic = &topic
+	}
+
+	if _, err := c.rooms.SendData(ctx, req); err != nil {
+		return fmt.Errorf("send data: %w", err)
+	}
+
+	return nil
+}
+
+type Ingress struct {
+	ID       string
+	Name     string
+	Input    string
+	Status   string
+	Room     string
+	Identity string
+	URL      string
+	Error    string
+}
+
+// ListIngress lists ingresses; an empty room lists all of them. The stream
+// key is deliberately not mapped.
+func (c *Client) ListIngress(ctx context.Context, room string) ([]Ingress, error) {
+	res, err := c.ingress.ListIngress(ctx, &livekit.ListIngressRequest{RoomName: room})
+	if err != nil {
+		return nil, fmt.Errorf("list ingress: %w", err)
+	}
+
+	out := make([]Ingress, len(res.GetItems()))
+
+	for i, in := range res.GetItems() {
+		out[i] = Ingress{
+			ID:       in.GetIngressId(),
+			Name:     in.GetName(),
+			Input:    strings.TrimSuffix(in.GetInputType().String(), "_INPUT"),
+			Status:   strings.TrimPrefix(in.GetState().GetStatus().String(), "ENDPOINT_"),
+			Room:     in.GetRoomName(),
+			Identity: in.GetParticipantIdentity(),
+			URL:      in.GetUrl(),
+			Error:    in.GetState().GetError(),
+		}
+	}
+
+	return out, nil
 }

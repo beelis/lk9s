@@ -25,6 +25,12 @@ type RoomLister interface {
 	ListEgresses(ctx context.Context, room string) ([]lk.Egress, error)
 	ListAgentDispatches(ctx context.Context, room string) ([]lk.AgentDispatch, error)
 	ListSIP(ctx context.Context) ([]lk.SIPEntry, error)
+	ListIngress(ctx context.Context, room string) ([]lk.Ingress, error)
+	StopEgress(ctx context.Context, id string) error
+	CreateDispatch(ctx context.Context, room, agentName, metadata string) error
+	DeleteDispatch(ctx context.Context, room, id string) error
+	UpdateRoomMetadata(ctx context.Context, room, metadata string) error
+	SendData(ctx context.Context, room, topic string, data []byte, identities []string, reliable bool) error
 	DeleteRoom(ctx context.Context, room string) error
 	CreateRoom(ctx context.Context, name string, emptyTimeout, maxParticipants uint32) (lk.Room, error)
 	RemoveParticipant(ctx context.Context, room, identity string) error
@@ -79,6 +85,8 @@ func Run(
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	applyTheme()
+
 	app := tview.NewApplication()
 	pages := tview.NewPages()
 	n := nav{
@@ -97,6 +105,26 @@ func Run(
 	// replaces it, instead of leaking a poller per switch.
 	var cancelRooms context.CancelFunc
 
+	header, updateHeader, setHints := newHeader(version, lkCLIVersion(ctx))
+
+	// Overlays without hints (forms, confirmations) leave the previous hints
+	// in place; removing them restores the page underneath.
+	pages.SetChangedFunc(func() {
+		if _, p := pages.GetFrontPage(); p != nil {
+			if h, ok := p.(*hinted); ok {
+				setHints(h.keys)
+			}
+		}
+	})
+
+	urls := map[string]string{}
+
+	for _, c := range contexts {
+		urls[c.Name] = c.URL
+	}
+
+	urls[current.Name] = current.URL
+
 	showRooms := func(nn nav) {
 		if cancelRooms != nil {
 			cancelRooms()
@@ -106,6 +134,8 @@ func Run(
 		cancelRooms = roomsCancel
 		nn.ctx = roomsCtx
 		active = nn
+
+		updateHeader(headerInfo{context: nn.contextName, url: urls[nn.contextName], write: nn.write})
 
 		pages.RemovePage("rooms")
 		pages.AddPage("rooms", roomsPage(nn), true, true) //nolint:contextcheck // ctx is carried in nav
@@ -127,7 +157,12 @@ func Run(
 	// recreated on every ":" press.
 	var cmdBar *tview.InputField
 
-	blur := func() { app.SetFocus(pages) }
+	var root *tview.Flex
+
+	blur := func() {
+		root.ResizeItem(cmdBar, 0, 0)
+		app.SetFocus(pages)
+	}
 
 	cmdBar = newCommandBar(blur, func(cmd string) {
 		switch cmd {
@@ -144,6 +179,8 @@ func Run(
 			pages.AddPage("create-room", roomCreatePage(active), true, true)
 		case "token":
 			pages.AddPage("token-form", tokenFormPage(active, "", ""), true, true)
+		case "ingress":
+			showIngress(active, pages, app)
 		case "sip":
 			nn := active
 
@@ -176,13 +213,15 @@ func Run(
 			return event
 		}
 
+		root.ResizeItem(cmdBar, 3, 0)
 		app.SetFocus(cmdBar)
 
 		return nil
 	})
 
-	root := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(cmdBar, 1, 0, false).
+	root = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(header, headerHeight, 0, false).
+		AddItem(cmdBar, 0, 0, false).
 		AddItem(pages, 0, 1, true)
 
 	return app.SetRoot(root, true).Run()
@@ -190,7 +229,7 @@ func Run(
 
 func newTable(title string) *tview.Table {
 	table := tview.NewTable().SetBorders(false).SetSelectable(true, false).SetFixed(1, 0)
-	table.SetTitle(title).SetBorder(true)
+	table.SetTitle(title).SetTitleAlign(tview.AlignCenter).SetBorder(true)
 
 	return table
 }

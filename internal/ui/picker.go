@@ -16,9 +16,12 @@ var ErrSelectionCancelled = errors.New("selection cancelled")
 // Esc cancels the selection (returning ErrSelectionCancelled) instead of
 // leaving the user stuck with no way out short of Ctrl+C.
 func SelectContext(contexts []config.Context) (config.Context, error) {
+	applyTheme()
+
 	app := tview.NewApplication()
-	table := tview.NewTable().SetBorders(false).SetSelectable(true, false)
-	table.SetTitle(" Select Context ").SetBorder(true)
+	table := newTable(" Select Context ")
+	// tview loops forever when a selectable table has no selectable cell.
+	table.SetSelectable(len(contexts) > 0, false)
 
 	cancelled := false
 
@@ -36,7 +39,7 @@ func SelectContext(contexts []config.Context) (config.Context, error) {
 
 	headers := []string{"NAME", "URL"}
 	for col, h := range headers {
-		table.SetCell(0, col, tview.NewTableCell(h).SetSelectable(false).SetExpansion(1))
+		table.SetCell(0, col, headerCell(h))
 	}
 
 	for row, ctx := range contexts {

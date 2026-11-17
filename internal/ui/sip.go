@@ -50,7 +50,7 @@ func sipPage(n nav, initial []lk.SIPEntry) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > sip")
 	table := newTable(" SIP ")
 	status := newStatusBar()
-	state := &tableState[lk.SIPEntry]{cols: sipCols, sortAsc: true}
+	state := &tableState[lk.SIPEntry]{title: "sip", cols: sipCols, sortAsc: true}
 	state.setItems(initial)
 
 	state.render(table)
@@ -113,9 +113,8 @@ func sipPage(n nav, initial []lk.SIPEntry) tview.Primitive {
 
 	keys := [][2]string{{"Esc", "back"}, {"m", "metadata"}, {"Shift+letter", "sort"}}
 
-	return tview.NewFlex().SetDirection(tview.FlexRow).
+	return withHints(tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
-		AddItem(status, 1, 0, false).
-		AddItem(legend(keys), 1, 0, false)
+		AddItem(status, 1, 0, false), keys)
 }

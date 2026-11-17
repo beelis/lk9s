@@ -55,7 +55,7 @@ func tracksPage(n nav, room, identity string, initial []lk.Track) tview.Primitiv
 		SetText(fmt.Sprintf(" ctx: %s%s > %s > %s", n.contextName, writeTag(n), room, identity))
 	table := newTable(fmt.Sprintf(" Tracks: %s ", identity))
 	status := newStatusBar()
-	state := &tableState[lk.Track]{cols: trackCols, sortAsc: true}
+	state := &tableState[lk.Track]{title: "tracks", scope: identity, cols: trackCols, sortAsc: true}
 	state.setItems(initial)
 
 	state.render(table)
@@ -155,11 +155,10 @@ func tracksPage(n nav, room, identity string, initial []lk.Track) tview.Primitiv
 		{"Shift+letter", "sort"},
 	}
 
-	return tview.NewFlex().SetDirection(tview.FlexRow).
+	return withHints(tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
-		AddItem(status, 1, 0, false).
-		AddItem(legend(keys), 1, 0, false)
+		AddItem(status, 1, 0, false), keys)
 }
 
 func participantTracks(pp []lk.Participant, identity string) []lk.Track {

@@ -134,3 +134,43 @@ func confirmKickParticipantPage(n nav, room, identity string, onDone func(err er
 		action:   func(ctx context.Context) error { return n.client.RemoveParticipant(ctx, room, identity) },
 	}, onDone)
 }
+
+// confirmStopEgressPage asks the user to type the egress ID back before
+// stopping it, which ends the recording or stream. onDone is called on the UI
+// thread after the attempt.
+func confirmStopEgressPage(n nav, id string, onDone func(err error)) tview.Primitive {
+	return confirmPage(n, typeToConfirm{
+		pageName: "confirm-stop-egress",
+		title:    " confirm stop ",
+		label:    "egress id: ",
+		mismatch: "[red] id does not match",
+		progress: "stopping...",
+		warning: fmt.Sprintf(
+			"Stop egress %q?\nThe recording or stream ends.\n\n"+
+				"Type the egress ID to confirm, then press Enter.\nEsc to cancel.",
+			id,
+		),
+		expected: id,
+		action:   func(ctx context.Context) error { return n.client.StopEgress(ctx, id) },
+	}, onDone)
+}
+
+// confirmDeleteDispatchPage asks the user to type the dispatch ID back before
+// deleting the agent dispatch. onDone is called on the UI thread after the
+// attempt.
+func confirmDeleteDispatchPage(n nav, room, id string, onDone func(err error)) tview.Primitive {
+	return confirmPage(n, typeToConfirm{
+		pageName: "confirm-delete-dispatch",
+		title:    " confirm delete ",
+		label:    "dispatch id: ",
+		mismatch: "[red] id does not match",
+		progress: "deleting...",
+		warning: fmt.Sprintf(
+			"Delete agent dispatch %q in room %q?\n\n"+
+				"Type the dispatch ID to confirm, then press Enter.\nEsc to cancel.",
+			id, room,
+		),
+		expected: id,
+		action:   func(ctx context.Context) error { return n.client.DeleteDispatch(ctx, room, id) },
+	}, onDone)
+}

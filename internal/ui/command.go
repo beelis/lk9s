@@ -9,7 +9,7 @@ import (
 
 // commands are the recognized ":" command names, offered as autocomplete
 // entries in the order shown.
-var commands = []string{"create-room", "projects", "ctx", "rooms", "sip", "token", "quit"}
+var commands = []string{"create-room", "projects", "ctx", "rooms", "ingress", "sip", "token", "quit"}
 
 // newCommandBar builds the k9s-style ":" command line that stays docked at
 // the top of the screen for the lifetime of the app (see Run). Pressing ":"
@@ -18,6 +18,7 @@ var commands = []string{"create-room", "projects", "ctx", "rooms", "sip", "token
 // lower-cased command once the user submits non-empty text.
 func newCommandBar(blur func(), onExec func(cmd string)) *tview.InputField {
 	input := tview.NewInputField().SetLabel(" : ")
+	input.SetBorder(true)
 
 	input.SetAutocompleteFunc(func(currentText string) []string {
 		currentText = strings.ToLower(strings.TrimSpace(currentText))

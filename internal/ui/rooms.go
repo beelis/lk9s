@@ -2,6 +2,7 @@ package ui
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"time"
 
@@ -37,6 +38,11 @@ var roomCols = []column[lk.Room]{
 	},
 }
 
+// validRow reports whether row (1-based, below the header) addresses an item.
+func validRow[T any](items []T, row int) bool {
+	return row > 0 && row <= len(items)
+}
+
 //nolint:gocognit,funlen // key-binding dispatch
 func roomsInputCapture(
 	n nav,
@@ -67,7 +73,7 @@ func roomsInputCapture(
 		}
 
 		if event.Key() == tcell.KeyCtrlD {
-			if row > 0 && row <= len(state.sorted) && requireWrite(n, status) {
+			if validRow(state.sorted, row) && requireWrite(n, status) {
 				roomName := state.sorted[row-1].Name
 
 				n.pages.RemovePage("confirm-delete")
@@ -82,7 +88,7 @@ func roomsInputCapture(
 		}
 
 		if event.Rune() == 'e' {
-			if row > 0 && row <= len(state.sorted) {
+			if validRow(state.sorted, row) {
 				roomName := state.sorted[row-1].Name
 
 				go func() {
@@ -107,7 +113,7 @@ func roomsInputCapture(
 		}
 
 		if event.Rune() == 'm' {
-			if row > 0 && row <= len(state.sorted) {
+			if validRow(state.sorted, row) {
 				r := state.sorted[row-1]
 
 				n.pages.RemovePage("metadata")
@@ -117,8 +123,36 @@ func roomsInputCapture(
 			return nil
 		}
 
+		if event.Rune() == 'u' {
+			if validRow(state.sorted, row) && requireWrite(n, status) {
+				r := state.sorted[row-1]
+
+				n.pages.RemovePage("update-metadata")
+				n.pages.AddPage("update-metadata", formPage(n, "update-metadata", " room metadata: "+r.Name+" ",
+					[]formField{{label: "metadata", initial: r.Metadata}},
+					func(ctx context.Context, v map[string]string) error {
+						return n.client.UpdateRoomMetadata(ctx, r.Name, v["metadata"])
+					},
+					func() { go refresh(nil) },
+				), true, true)
+			}
+
+			return nil
+		}
+
+		if event.Rune() == 'd' {
+			if validRow(state.sorted, row) && requireWrite(n, status) {
+				roomName := state.sorted[row-1].Name
+
+				n.pages.RemovePage("send-data")
+				n.pages.AddPage("send-data", sendDataPage(n, roomName, status), true, true)
+			}
+
+			return nil
+		}
+
 		if event.Rune() == 'i' {
-			if row > 0 && row <= len(state.sorted) {
+			if validRow(state.sorted, row) {
 				r := state.sorted[row-1]
 
 				n.pages.RemovePage("roominfo")
@@ -129,7 +163,7 @@ func roomsInputCapture(
 		}
 
 		if event.Rune() == 'g' {
-			if row > 0 && row <= len(state.sorted) {
+			if validRow(state.sorted, row) {
 				roomName := state.sorted[row-1].Name
 
 				go func() {
@@ -154,7 +188,7 @@ func roomsInputCapture(
 		}
 
 		if event.Rune() == 'T' {
-			if row > 0 && row <= len(state.sorted) {
+			if validRow(state.sorted, row) {
 				roomName := state.sorted[row-1].Name
 
 				n.pages.RemovePage("token-form")
@@ -194,12 +228,9 @@ func roomsInputCapture(
 }
 
 func roomsPage(n nav) tview.Primitive {
-	version := tview.NewTextView().SetText(fmt.Sprintf(" %-10s %s", "LK9s Rev:", n.version))
-	header := tview.NewTextView().SetDynamicColors(true).
-		SetText(fmt.Sprintf(" %-10s %s%s", "ctx:", n.contextName, writeTag(n)))
 	table := newTable(" Rooms ")
 	status := newStatusBar()
-	state := &tableState[lk.Room]{cols: roomCols, sortAsc: true}
+	state := &tableState[lk.Room]{title: "rooms", cols: roomCols, sortAsc: true}
 
 	status.SetText(" loading...")
 	state.render(table)
@@ -266,15 +297,13 @@ func roomsPage(n nav) tview.Primitive {
 	}()
 
 	keys := [][2]string{
-		{"Enter", "participants"}, {"e", "egresses"}, {"m", "metadata"}, {"i", "room info"},
+		{"Enter", "participants"}, {"e", "egresses"}, {"m", "metadata"}, {"u", "update metadata"},
+		{"d", "send data"}, {"i", "room info"},
 		{"g", "agents"}, {"s", "sip"}, {"T", "token"}, {"Ctrl+D", "delete"}, {"Ctrl+E", "error detail"},
 		{"Shift+letter", "sort"}, {"/", "filter"}, {":", "command"},
 	}
 
-	return tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(version, 1, 0, false).
-		AddItem(header, 1, 0, false).
+	return withHints(tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(table, 0, 1, true).
-		AddItem(status, 1, 0, false).
-		AddItem(legend(keys), 1, 0, false)
+		AddItem(status, 1, 0, false), keys)
 }

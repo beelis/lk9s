@@ -13,12 +13,44 @@ import (
 	"github.com/mariusgassen/lk9s/internal/ui"
 )
 
+// buildVersion reports the module version, or for local builds "dev" with
+// the VCS revision stamped by the Go toolchain.
 func buildVersion() string {
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "(devel)" && info.Main.Version != "" {
-		return info.Main.Version
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "dev"
 	}
 
-	return "dev"
+	if v := info.Main.Version; v != "" && v != "(devel)" {
+		return v
+	}
+
+	var rev string
+
+	dirty := false
+
+	for _, kv := range info.Settings {
+		switch kv.Key {
+		case "vcs.revision":
+			rev = kv.Value
+		case "vcs.modified":
+			dirty = kv.Value == "true"
+		}
+	}
+
+	if rev == "" {
+		return "dev"
+	}
+
+	if len(rev) > 7 {
+		rev = rev[:7]
+	}
+
+	if dirty {
+		rev += "+dirty"
+	}
+
+	return "dev (" + rev + ")"
 }
 
 func main() {

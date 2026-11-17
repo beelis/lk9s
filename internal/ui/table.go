@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -15,6 +17,8 @@ type column[T any] struct {
 }
 
 type tableState[T any] struct {
+	title      string // resource name shown in the border title, e.g. "rooms"
+	scope      string // optional parent shown as "title(scope)"
 	cols       []column[T]
 	items      []T
 	sorted     []T
@@ -22,6 +26,12 @@ type tableState[T any] struct {
 	sortAsc    bool
 	resort     bool
 	filterText string
+}
+
+// headerCell is the styled, non-selectable column header cell.
+func headerCell(label string) *tview.TableCell {
+	return tview.NewTableCell(label).SetSelectable(false).SetExpansion(1).
+		SetTextColor(colorCyan).SetAttributes(tcell.AttrBold)
 }
 
 func (s *tableState[T]) setItems(items []T) {
@@ -63,13 +73,13 @@ func (s *tableState[T]) render(table *tview.Table) {
 
 		if col == s.sortCol {
 			if s.sortAsc {
-				label += " ▲"
+				label += "↑"
 			} else {
-				label += " ▼"
+				label += "↓"
 			}
 		}
 
-		table.SetCell(0, col, tview.NewTableCell(label).SetSelectable(false).SetExpansion(1))
+		table.SetCell(0, col, headerCell(label))
 	}
 
 	if s.resort {
@@ -98,6 +108,32 @@ func (s *tableState[T]) render(table *tview.Table) {
 			table.SetCell(row+1, col, tview.NewTableCell(c.display(item)).SetExpansion(1))
 		}
 	}
+
+	// tview loops forever when a selectable table has no selectable cell.
+	table.SetSelectable(len(s.sorted) > 0, false)
+
+	if s.title != "" {
+		table.SetTitle(s.borderTitle())
+	}
+}
+
+// borderTitle formats the k9s-style table title: name(scope)</filter>[count].
+func (s *tableState[T]) borderTitle() string {
+	var b strings.Builder
+
+	b.WriteString(" " + s.title)
+
+	if s.scope != "" {
+		b.WriteString("(" + s.scope + ")")
+	}
+
+	if s.filterText != "" {
+		b.WriteString("</" + s.filterText + ">")
+	}
+
+	fmt.Fprintf(&b, "[%d] ", len(s.sorted))
+
+	return b.String()
 }
 
 func (s *tableState[T]) handleKey(r rune) bool {

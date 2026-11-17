@@ -53,7 +53,7 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 	header := tview.NewTextView().SetText(" ctx: " + n.contextName + " > " + roomName + " > egresses")
 	table := newTable(" Egresses ")
 	status := newStatusBar()
-	state := &tableState[lk.Egress]{cols: egressCols, sortAsc: true}
+	state := &tableState[lk.Egress]{title: "egresses", cols: egressCols, sortAsc: true}
 	state.setItems(initial)
 
 	state.render(table)
@@ -64,6 +64,20 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 		if event.Key() == tcell.KeyEscape {
 			cancel()
 			n.pages.SwitchToPage("rooms")
+
+			return nil
+		}
+
+		if event.Key() == tcell.KeyCtrlD {
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(state.sorted) && requireWrite(n, status) {
+				id := state.sorted[row-1].ID
+
+				n.pages.RemovePage("confirm-stop-egress")
+				n.pages.AddPage("confirm-stop-egress", confirmStopEgressPage(n, id, func(err error) {
+					updateStatus(status, err)
+				}), true, true)
+			}
 
 			return nil
 		}
@@ -102,11 +116,10 @@ func egressesPage(n nav, roomName string, initial []lk.Egress) tview.Primitive {
 		}
 	}()
 
-	keys := [][2]string{{"Esc", "back"}, {"Shift+letter", "sort"}, {":", "command"}}
+	keys := [][2]string{{"Ctrl+D", "stop"}, {"Esc", "back"}, {"Shift+letter", "sort"}, {":", "command"}}
 
-	return tview.NewFlex().SetDirection(tview.FlexRow).
+	return withHints(tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
-		AddItem(status, 1, 0, false).
-		AddItem(legend(keys), 1, 0, false)
+		AddItem(status, 1, 0, false), keys)
 }

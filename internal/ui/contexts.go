@@ -13,10 +13,12 @@ func contextsPage(n nav, contexts []config.Context, onSelect func(config.Context
 	const pageName = "contexts"
 
 	table := newTable(" Select Project ")
+	// tview loops forever when a selectable table has no selectable cell.
+	table.SetSelectable(len(contexts) > 0, false)
 
 	headers := []string{"NAME", "URL"}
 	for col, h := range headers {
-		table.SetCell(0, col, tview.NewTableCell(h).SetSelectable(false).SetExpansion(1))
+		table.SetCell(0, col, headerCell(h))
 	}
 
 	for row, c := range contexts {
@@ -46,7 +48,6 @@ func contextsPage(n nav, contexts []config.Context, onSelect func(config.Context
 
 	keys := [][2]string{{"Enter", "select"}, {"Esc", "cancel"}}
 
-	return tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(table, 0, 1, true).
-		AddItem(legend(keys), 1, 0, false)
+	return withHints(tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(table, 0, 1, true), keys)
 }

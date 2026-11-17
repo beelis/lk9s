@@ -73,7 +73,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		SetText(" ctx: " + n.contextName + writeTag(n) + " > " + roomName)
 	table := newTable(" Participants ")
 	status := newStatusBar()
-	state := &tableState[lk.Participant]{cols: participantCols, sortAsc: true}
+	state := &tableState[lk.Participant]{title: "participants", scope: roomName, cols: participantCols, sortAsc: true}
 	state.setItems(initial)
 
 	state.render(table)
@@ -273,9 +273,8 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 		{":", "command"},
 	}
 
-	return tview.NewFlex().SetDirection(tview.FlexRow).
+	return withHints(tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(table, 0, 1, true).
-		AddItem(status, 1, 0, false).
-		AddItem(legend(keys), 1, 0, false)
+		AddItem(status, 1, 0, false), keys)
 }
