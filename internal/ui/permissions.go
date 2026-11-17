@@ -3,7 +3,7 @@ package ui
 import (
 	"strings"
 
-	"github.com/beelis/lk9s/internal/lk"
+	"github.com/mariusgassen/lk9s/internal/lk"
 	"github.com/rivo/tview"
 )
 
