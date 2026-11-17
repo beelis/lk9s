@@ -8,9 +8,9 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/beelis/lk9s/internal/config"
-	"github.com/beelis/lk9s/internal/lk"
-	"github.com/beelis/lk9s/internal/ui"
+	"github.com/mariusgassen/lk9s/internal/config"
+	"github.com/mariusgassen/lk9s/internal/lk"
+	"github.com/mariusgassen/lk9s/internal/ui"
 )
 
 func buildVersion() string {

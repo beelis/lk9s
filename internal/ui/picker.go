@@ -3,8 +3,8 @@ package ui
 import (
 	"errors"
 
-	"github.com/beelis/lk9s/internal/config"
 	"github.com/gdamore/tcell/v2"
+	"github.com/mariusgassen/lk9s/internal/config"
 	"github.com/rivo/tview"
 )
 

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beelis/lk9s/internal/lk"
 	"github.com/gdamore/tcell/v2"
+	"github.com/mariusgassen/lk9s/internal/lk"
 	"github.com/rivo/tview"
 )
 

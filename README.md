@@ -7,7 +7,11 @@ A k9s-style terminal UI for [LiveKit](https://livekit.io).
 
 ## Installation
 
-Build from source:
+```bash
+go install github.com/mariusgassen/lk9s/cmd/lk9s@latest
+```
+
+Or build from source:
 
 ```bash
 git clone https://github.com/mariusgassen/lk9s.git

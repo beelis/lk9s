@@ -1,4 +1,4 @@
-module github.com/beelis/lk9s
+module github.com/mariusgassen/lk9s
 
 go 1.26
 
