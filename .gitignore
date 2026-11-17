@@ -17,8 +17,6 @@
 # Claude / agents
 .claude/
 .claude-sandbox/
-CLAUDE.md
-AGENTS.md
 .deps/
 
 # OS

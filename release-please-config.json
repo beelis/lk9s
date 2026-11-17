@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "ea4791fd34160b86d251a2da2799cc5ec43326a5",
+  "include-component-in-tag": false,
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "package-name": "lk9s",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true
+    }
+  }
+}

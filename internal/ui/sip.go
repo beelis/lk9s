@@ -60,7 +60,7 @@ func sipPage(n nav, initial []lk.SIPEntry) tview.Primitive {
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			cancel()
-			n.pages.SwitchToPage("rooms")
+			n.pages.RemovePage("sip")
 
 			return nil
 		}

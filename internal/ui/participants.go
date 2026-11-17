@@ -133,7 +133,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			cancel()
-			n.pages.SwitchToPage("rooms")
+			n.pages.RemovePage("participants")
 
 			return nil
 		}
