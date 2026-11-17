@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/mariusgassen/lk9s/compare/v1.0.0...v1.1.0) (2026-11-17)
+
+
+### Features
+
+* add k9s-style header, key hints, ingress view and write actions ([#17](https://github.com/mariusgassen/lk9s/issues/17)) ([4ea141c](https://github.com/mariusgassen/lk9s/commit/4ea141c91ca654a4b9a18881aa32dd42a85b0520))
+
 ## 1.0.0 (2026-11-17)
 
 
