@@ -349,11 +349,20 @@ type TokenGrant struct {
 	IngressAdmin         bool
 }
 
+// RequiresWrite reports whether the grant lets its holder mutate server
+// state (administer a room, create rooms, start recordings, manage
+// ingress), as opposed to joining a room or only listing rooms. Minting
+// such a token is refused for read-only contexts, since it would sidestep
+// the write guard.
+func (g TokenGrant) RequiresWrite() bool {
+	return g.RoomAdmin || g.RoomCreate || g.RoomRecord || g.IngressAdmin
+}
+
 // CreateToken mints a signed access token for identity, valid for ttl, with
 // the given grant scoped to room (room is only meaningful when
 // grant.RoomJoin or grant.RoomAdmin is set). This is a local signing
 // operation using the context's configured API key/secret (no LiveKit API
-// call), so it's available regardless of the context's write setting.
+// call). Callers must gate grants for which RequiresWrite is true.
 func (c *Client) CreateToken(identity, room string, ttl time.Duration, grant TokenGrant) (string, error) {
 	at := c.rooms.CreateToken()
 	at.SetIdentity(identity).

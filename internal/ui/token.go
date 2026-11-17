@@ -19,8 +19,9 @@ const defaultTokenTTL = time.Hour
 // (RoomAdmin/RoomCreate/RoomList/RoomRecord/IngressAdmin) aren't tied to
 // the participant/room this was opened from, or to any room at all.
 // Minting is a local JWT signing operation using the context's configured
-// API key/secret (no LiveKit API call), so unlike the other participant
-// actions it's available even when the context is read-only.
+// API key/secret (no LiveKit API call), so join/list tokens are available
+// even when the context is read-only. Grants that let the holder mutate
+// server state (see lk.TokenGrant.RequiresWrite) still need write access.
 //
 //nolint:funlen // form construction
 func tokenFormPage(n nav, identity, room string) tview.Primitive {
@@ -97,6 +98,12 @@ func tokenFormPage(n nav, identity, room string) tview.Primitive {
 
 		if (grant.RoomJoin || grant.RoomAdmin) && room == "" {
 			setStatus("[red] room is required for RoomJoin/RoomAdmin")
+
+			return
+		}
+
+		if grant.RequiresWrite() && !n.write {
+			setStatus("[yellow] RoomAdmin/RoomCreate/RoomRecord/IngressAdmin need `write: true` for this context")
 
 			return
 		}

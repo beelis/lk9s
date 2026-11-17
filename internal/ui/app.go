@@ -86,6 +86,12 @@ func Run(
 		write: current.Write, version: version, ctx: ctx,
 	}
 
+	// active tracks the nav for whichever context is currently selected, so
+	// the global ":" command dispatch below (which outlives any one
+	// context) always acts against the right client and the current rooms
+	// context, instead of the ones built at startup.
+	active := n
+
 	// cancelRooms stops the previous rooms page's background refresh (and,
 	// transitively, any subpage opened from it) when a project switch
 	// replaces it, instead of leaking a poller per switch.
@@ -99,24 +105,18 @@ func Run(
 		roomsCtx, roomsCancel := context.WithCancel(ctx)
 		cancelRooms = roomsCancel
 		nn.ctx = roomsCtx
+		active = nn
 
 		pages.RemovePage("rooms")
 		pages.AddPage("rooms", roomsPage(nn), true, true) //nolint:contextcheck // ctx is carried in nav
 		pages.SwitchToPage("rooms")
 	}
 
-	// active tracks the nav for whichever context is currently selected, so
-	// the global ":" command dispatch below (which outlives any one
-	// context) always acts against the right client instead of the one
-	// dial(current) built at startup.
-	active := n
-
 	switchContext := func(c config.Context) {
-		nn := n
+		nn := active
 		nn.client = dial(c)
 		nn.contextName = c.Name
 		nn.write = c.Write
-		active = nn
 		showRooms(nn)
 	}
 
@@ -134,7 +134,7 @@ func Run(
 		case "projects", "ctx":
 			prev, _ := pages.GetFrontPage()
 
-			pages.AddPage("contexts", contextsPage(n, contexts, switchContext, func() {
+			pages.AddPage("contexts", contextsPage(active, contexts, switchContext, func() {
 				pages.SwitchToPage(prev)
 			}), true, true)
 			pages.SwitchToPage("contexts")
@@ -145,15 +145,21 @@ func Run(
 		case "token":
 			pages.AddPage("token-form", tokenFormPage(active, "", ""), true, true)
 		case "sip":
-			// Errors aren't surfaced here (there's no status bar at this
-			// level); sipPage's own refresh ticker will report a fetch
-			// failure via its status bar within refreshInterval.
+			nn := active
+
 			go func() {
-				entries, _ := active.client.ListSIP(active.ctx)
+				entries, err := nn.client.ListSIP(nn.ctx)
 
 				app.QueueUpdateDraw(func() {
+					if err != nil {
+						pages.RemovePage("status-detail")
+						pages.AddPage("status-detail", statusDetailPage(nn, "error: "+err.Error()), true, true)
+
+						return
+					}
+
 					pages.RemovePage("sip")
-					pages.AddPage("sip", sipPage(active, entries), true, true)
+					pages.AddPage("sip", sipPage(nn, entries), true, true)
 				})
 			}()
 		case "quit", "q":
