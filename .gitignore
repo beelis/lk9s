@@ -10,12 +10,16 @@
 *.iml
 
 # Go build cache
+/vendor/
 *.test
 *.out
 
-# Claude
+# Claude / agents
 .claude/
+.claude-sandbox/
 CLAUDE.md
+AGENTS.md
+.deps/
 
 # OS
 .DS_Store

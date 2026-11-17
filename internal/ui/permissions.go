@@ -12,6 +12,8 @@ import (
 // editable here (it's a source list, not a flag) but is preserved
 // unchanged on save. onSaved is called on the UI thread after a successful
 // save, so the caller can refresh its own view.
+//
+//nolint:funlen // form construction
 func permissionsPage(n nav, room, identity string, perm lk.Permission, onSaved func()) tview.Primitive {
 	const pageName = "permissions"
 
@@ -50,7 +52,7 @@ func permissionsPage(n nav, room, identity string, perm lk.Permission, onSaved f
 	}
 
 	checkbox := func(label string) bool {
-		return form.GetFormItemByLabel(label).(*tview.Checkbox).IsChecked()
+		return isChecked(form, label)
 	}
 
 	save := func() {

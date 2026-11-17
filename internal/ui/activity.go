@@ -68,7 +68,9 @@ func diffParticipants(prev map[string]lk.Participant, current []lk.Participant) 
 	return events
 }
 
-func appendTrackDiff(events []activityEvent, now time.Time, identity, label string, old, cur lk.TrackState) []activityEvent {
+func appendTrackDiff(
+	events []activityEvent, now time.Time, identity, label string, old, cur lk.TrackState,
+) []activityEvent {
 	if old == cur {
 		return events
 	}
@@ -99,7 +101,9 @@ func formatActivityEvent(e activityEvent) string {
 // with the page's TextView so the caller can append live lines to it while
 // this page is on screen; onClose is called when the page is dismissed so
 // the caller stops doing so.
-func activityPage(n nav, room string, initial []activityEvent, onOpen func(*tview.TextView), onClose func()) tview.Primitive {
+func activityPage(
+	n nav, room string, initial []activityEvent, onOpen func(*tview.TextView), onClose func(),
+) tview.Primitive {
 	const pageName = "activity"
 
 	body := tview.NewTextView().SetScrollable(true).SetMaxLines(maxActivityEvents)

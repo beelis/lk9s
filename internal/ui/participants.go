@@ -67,7 +67,7 @@ var participantCols = []column[lk.Participant]{
 	},
 }
 
-//nolint:gocognit,funlen
+//nolint:gocognit,funlen,gocyclo // key-binding dispatch
 func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Primitive {
 	header := tview.NewTextView().SetDynamicColors(true).
 		SetText(" ctx: " + n.contextName + writeTag(n) + " > " + roomName)
@@ -95,6 +95,21 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 	// (e.g. an error from an action that just ran) instead of overwriting
 	// it with this refresh's own result; the participant list is always
 	// updated.
+	recordDiffs := func(diffs []activityEvent) {
+		if len(diffs) == 0 {
+			return
+		}
+
+		activityLog = append(activityLog, diffs...)
+		if len(activityLog) > maxActivityEvents {
+			activityLog = activityLog[len(activityLog)-maxActivityEvents:]
+		}
+
+		if eventsView != nil {
+			appendActivityLines(eventsView, diffs)
+		}
+	}
+
 	fetchAndRender := func(keepStatus error) {
 		fetched, err := n.client.ListParticipants(ctx, roomName)
 
@@ -103,19 +118,8 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 				state.setItems(fetched)
 				state.render(table)
 
-				diffs := diffParticipants(prevSnapshot, fetched)
+				recordDiffs(diffParticipants(prevSnapshot, fetched))
 				prevSnapshot = snapshotParticipants(fetched)
-
-				if len(diffs) > 0 {
-					activityLog = append(activityLog, diffs...)
-					if len(activityLog) > maxActivityEvents {
-						activityLog = activityLog[len(activityLog)-maxActivityEvents:]
-					}
-
-					if eventsView != nil {
-						appendActivityLines(eventsView, diffs)
-					}
-				}
 			}
 
 			if keepStatus != nil {
@@ -151,6 +155,7 @@ func participantsPage(n nav, roomName string, initial []lk.Participant) tview.Pr
 				n.pages.RemovePage("confirm-kick")
 				n.pages.AddPage("confirm-kick", confirmKickParticipantPage(n, roomName, identity, func(err error) {
 					updateStatus(status, err)
+
 					go fetchAndRender(err)
 				}), true, true)
 			}

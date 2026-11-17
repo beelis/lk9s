@@ -19,7 +19,8 @@ func confirmDeleteRoomPage(n nav, roomName string, onDone func(err error)) tview
 	ctx, cancel := context.WithCancel(n.ctx)
 
 	warning := tview.NewTextView().SetText(fmt.Sprintf(
-		"Delete room %q?\nThis disconnects all participants and cannot be undone.\n\nType the room name to confirm, then press Enter.\nEsc to cancel.",
+		"Delete room %q?\nThis disconnects all participants and cannot be undone.\n\n"+
+			"Type the room name to confirm, then press Enter.\nEsc to cancel.",
 		roomName,
 	))
 
@@ -88,7 +89,8 @@ func confirmKickParticipantPage(n nav, room, identity string, onDone func(err er
 	ctx, cancel := context.WithCancel(n.ctx)
 
 	warning := tview.NewTextView().SetText(fmt.Sprintf(
-		"Remove participant %q from room %q?\nThis disconnects them immediately.\n\nType the identity to confirm, then press Enter.\nEsc to cancel.",
+		"Remove participant %q from room %q?\nThis disconnects them immediately.\n\n"+
+			"Type the identity to confirm, then press Enter.\nEsc to cancel.",
 		identity, room,
 	))
 

@@ -21,6 +21,8 @@ const defaultTokenTTL = time.Hour
 // Minting is a local JWT signing operation using the context's configured
 // API key/secret (no LiveKit API call), so unlike the other participant
 // actions it's available even when the context is read-only.
+//
+//nolint:funlen // form construction
 func tokenFormPage(n nav, identity, room string) tview.Primitive {
 	const pageName = "token-form"
 
@@ -56,20 +58,20 @@ func tokenFormPage(n nav, identity, room string) tview.Primitive {
 	}
 
 	checkbox := func(label string) bool {
-		return form.GetFormItemByLabel(label).(*tview.Checkbox).IsChecked()
+		return isChecked(form, label)
 	}
 
 	generate := func() {
-		identity := strings.TrimSpace(form.GetFormItemByLabel("identity").(*tview.InputField).GetText())
+		identity := strings.TrimSpace(inputText(form, "identity"))
 		if identity == "" {
 			setStatus("[red] identity is required")
 
 			return
 		}
 
-		room := strings.TrimSpace(form.GetFormItemByLabel("room (for join/admin grants)").(*tview.InputField).GetText())
+		room := strings.TrimSpace(inputText(form, "room (for join/admin grants)"))
 
-		ttlText := form.GetFormItemByLabel("expires in (e.g. 1h, 30m)").(*tview.InputField).GetText()
+		ttlText := inputText(form, "expires in (e.g. 1h, 30m)")
 
 		ttl, err := time.ParseDuration(ttlText)
 		if err != nil || ttl <= 0 {

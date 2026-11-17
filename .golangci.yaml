@@ -18,6 +18,7 @@ linters:
     #    - errorlint
     - exhaustive
     - exhaustruct
+    - exhaustruct_v5
     - exptostd
     - fatcontext
     - forbidigo
@@ -27,6 +28,7 @@ linters:
     #    - gochecksumtype
     #    - gocritic
     - godox
+    - gomodguard
     #    - gosec
     - gosmopolitan
     #    - govet
@@ -111,6 +113,10 @@ linters:
       - docs
       - mocks
     rules:
+      # TUI help text and key labels repeat by design.
+      - path: internal/ui/
+        linters:
+          - goconst
       # Exclude some linters from running on tests files.
       - path: _test\.go
         linters:

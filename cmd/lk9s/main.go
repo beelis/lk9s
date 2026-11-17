@@ -23,7 +23,9 @@ func buildVersion() string {
 
 func main() {
 	contextName := flag.String("context", "", "context name to use (default: interactive selection)")
-	debugLog := flag.String("debug-log", "", "path to write debug logs to (API requests/responses); empty disables logging")
+	debugLog := flag.String(
+		"debug-log", "", "path to write debug logs to (API requests/responses); empty disables logging",
+	)
 
 	flag.Parse()
 
@@ -59,15 +61,14 @@ func main() {
 	}
 }
 
-// newDebugLogger returns nil (lk.NewClient then discards logs) when path is
-// empty. The TUI takes over the terminal, so logs go to a file, never
-// stdout/stderr.
+// newDebugLogger returns a discarding logger when path is empty. The TUI takes over the
+// terminal, so logs go to a file, never stdout/stderr.
 func newDebugLogger(path string) (*slog.Logger, error) {
 	if path == "" {
-		return nil, nil
+		return slog.New(slog.DiscardHandler), nil
 	}
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("open debug log: %w", err)
 	}

@@ -109,6 +109,7 @@ func tracksPage(n nav, room, identity string, initial []lk.Track) tview.Primitiv
 
 					n.app.QueueUpdateDraw(func() {
 						updateStatus(status, err)
+
 						go fetchAndRender(err)
 					})
 				}()

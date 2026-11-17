@@ -22,7 +22,11 @@ func roomCreatePage(n nav) tview.Primitive {
 	cancel := func() { n.pages.RemovePage(pageName) }
 
 	if !n.write {
-		form.AddTextView("", "write actions disabled for this context\n(set `write: true` in ~/.lk9s.yaml)", 40, 2, true, false)
+		form.AddTextView(
+			"",
+			"write actions disabled for this context\n(set `write: true` in ~/.lk9s.yaml)",
+			40, 2, true, false,
+		)
 		form.AddButton("close", cancel)
 		form.SetCancelFunc(cancel)
 
@@ -43,21 +47,21 @@ func roomCreatePage(n nav) tview.Primitive {
 	}
 
 	create := func() {
-		name := strings.TrimSpace(form.GetFormItemByLabel("name").(*tview.InputField).GetText())
+		name := strings.TrimSpace(inputText(form, "name"))
 		if name == "" {
 			setStatus("[red] name is required")
 
 			return
 		}
 
-		emptyTimeout, err := parseOptionalUint(form.GetFormItemByLabel("empty timeout (s, optional)").(*tview.InputField).GetText())
+		emptyTimeout, err := parseOptionalUint(inputText(form, "empty timeout (s, optional)"))
 		if err != nil {
 			setStatus("[red] empty timeout: " + err.Error())
 
 			return
 		}
 
-		maxParticipants, err := parseOptionalUint(form.GetFormItemByLabel("max participants (optional)").(*tview.InputField).GetText())
+		maxParticipants, err := parseOptionalUint(inputText(form, "max participants (optional)"))
 		if err != nil {
 			setStatus("[red] max participants: " + err.Error())
 

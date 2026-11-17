@@ -257,7 +257,8 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 }
 
 func (c *Client) RemoveParticipant(ctx context.Context, room, identity string) error {
-	if _, err := c.rooms.RemoveParticipant(ctx, &livekit.RoomParticipantIdentity{Room: room, Identity: identity}); err != nil {
+	req := &livekit.RoomParticipantIdentity{Room: room, Identity: identity}
+	if _, err := c.rooms.RemoveParticipant(ctx, req); err != nil {
 		c.logger.Error("remove participant", "room", room, "identity", identity, "error", err)
 
 		return fmt.Errorf("remove participant: %w", err)
@@ -282,7 +283,7 @@ func (c *Client) SetTrackMuted(ctx context.Context, room, identity, trackSID str
 }
 
 func (c *Client) UpdatePermission(ctx context.Context, room, identity string, perm Permission) error {
-	//nolint:staticcheck
+	//nolint:staticcheck // Recorder is deprecated but still needed
 	req := &livekit.UpdateParticipantRequest{
 		Room:     room,
 		Identity: identity,

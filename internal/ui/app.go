@@ -71,7 +71,11 @@ func writeTag(n nav) string {
 // Run starts the TUI, connected to dial(current). contexts is the full list
 // of configured projects, offered by the ":projects" command to switch mid
 // session.
-func Run(dial func(config.Context) RoomLister, contexts []config.Context, current config.Context, version string) error {
+//
+//nolint:funlen // top-level tview wiring
+func Run(
+	dial func(config.Context) RoomLister, contexts []config.Context, current config.Context, version string,
+) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -97,7 +101,7 @@ func Run(dial func(config.Context) RoomLister, contexts []config.Context, curren
 		nn.ctx = roomsCtx
 
 		pages.RemovePage("rooms")
-		pages.AddPage("rooms", roomsPage(nn), true, true)
+		pages.AddPage("rooms", roomsPage(nn), true, true) //nolint:contextcheck // ctx is carried in nav
 		pages.SwitchToPage("rooms")
 	}
 
