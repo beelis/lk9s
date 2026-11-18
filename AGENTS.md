@@ -29,7 +29,7 @@ and local access-token minting. Go 1.26, tview/tcell.
 
 ## Commands
 
-- `make test` (`go test -race -cover ./...`), `make lint` (`golangci-lint run`), `make vet`, `make build`
+- `make test` (`go test -race -cover ./...`, includes the TUI e2e tests in `internal/ui/tui_e2e_test.go`: the real app on a tcell simulation screen with a fake client), `make e2e` (`-tags e2e` tests in `internal/lk` against an in-process fake API, or a real LiveKit `--dev` server when `LK9S_E2E_URL` is set, as in the CI `e2e` job), `make lint` (`golangci-lint run`), `make vet`, `make build`
 - CI pins golangci-lint v2.15.0; older local versions reject `exhaustruct_v5` in `.golangci.yaml`
 - `vendor/` and `.deps/` are git-ignored; with no internet run `go mod vendor` on the host
 - Follow the comment density of the surrounding code; lint uses most linters (`funlen` 80 lines)
